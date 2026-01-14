@@ -1,0 +1,11 @@
+[Unit]
+Description=AUTOTRADER-PRO Worker timer (a cada 10 minutos)
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=600
+Unit=autotrader-pro-worker.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

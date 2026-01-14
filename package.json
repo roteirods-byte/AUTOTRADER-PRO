@@ -1,0 +1,15 @@
+{
+  "name": "autotrader-pro",
+  "version": "1.0.0",
+  "description": "AUTOTRADER-PRO — Painel Único (Node/Express + Python workers + JSON local)",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "morgan": "^1.10.0"
+  }
+}

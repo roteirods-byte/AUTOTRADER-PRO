@@ -1,0 +1,16 @@
+[Unit]
+Description=AUTOTRADER-PRO API (Node/Express)
+After=network.target
+
+[Service]
+Type=simple
+User=roteiro_ds
+WorkingDirectory=/home/roteiro_ds/AUTOTRADER-PRO
+Environment=PORT=3000
+Environment=DATA_DIR=/home/roteiro_ds/AUTOTRADER-PRO/data
+ExecStart=/usr/bin/node /home/roteiro_ds/AUTOTRADER-PRO/server.js
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

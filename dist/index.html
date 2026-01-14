@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>AUTOTRADER-PRO</title>
+  <style>
+:root{
+  --bg:#05263a;
+  --panel:#062c44;
+  --line:rgba(255,255,255,.08);
+  --text:#eaf2ff;
+  --muted:rgba(234,242,255,.7);
+  --accent:#ff9a1a; /* abóbora */
+  --green:#22c55e;
+  --red:#ef4444;
+  --yellow:#fbbf24;
+  --bluebtn:#7dd3fc;
+  --gray:#94a3b8;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+.wrap{
+  max-width:1180px;
+  margin:18px auto;
+  padding:0 14px;
+}
+.card{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:18px 18px 14px;
+  box-shadow:0 10px 24px rgba(0,0,0,.25);
+}
+.header{
+  display:flex;
+  gap:16px;
+  align-items:flex-start;
+  justify-content:space-between;
+  flex-wrap:wrap;
+}
+h1{
+  margin:0;
+  font-size:22px;
+  letter-spacing:.2px;
+}
+.sub{
+  margin-top:6px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.35;
+  max-width:760px;
+}
+.actions{
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+.badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 12px;
+  border-radius:12px;
+  border:1px solid var(--line);
+  color:var(--text);
+  text-decoration:none;
+  font-weight:700;
+  font-size:12px;
+  background:rgba(0,0,0,.15);
+}
+.badge.top10{background:rgba(125,211,252,.10); border-color:rgba(125,211,252,.35)}
+.badge.main{background:rgba(34,197,94,.08); border-color:rgba(34,197,94,.25)}
+.updated{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  text-align:right;
+  min-width:180px;
+}
+.updated .lbl{color:var(--accent); font-weight:800; font-size:12px}
+.updated .val{color:var(--accent); font-weight:800; font-size:12px}
+.tableWrap{
+  margin-top:14px;
+  overflow:auto; /* mantém HORA dentro sem “jogar pra fora” */
+  border-radius:12px;
+  border:1px solid var(--line);
+}
+table{border-collapse:collapse; width:100%; min-width:980px}
+th,td{padding:10px 10px; border-bottom:1px solid var(--line); white-space:nowrap}
+th{
+  position:sticky;
+  top:0;
+  background:rgba(0,0,0,.22);
+  color:var(--accent);
+  font-weight:900;
+  font-size:12px;
+  text-transform:uppercase;
+  letter-spacing:.4px;
+}
+td{font-size:13px}
+td.col-par{width:80px}
+td.col-side{width:110px; font-weight:900}
+td.col-preco,td.col-alvo{width:110px}
+td.col-ganho,td.col-assert{width:95px; font-weight:900}
+td.col-eta{width:70px}
+td.col-zona,td.col-risco,td.col-prioridade{width:110px; font-weight:900}
+td.col-data{width:110px}
+td.col-hora{width:80px}
+.p-green{color:var(--green)}
+.p-red{color:var(--red)}
+.p-yellow{color:var(--yellow)}
+.p-gray{color:var(--gray)}
+.side-long{color:var(--green)}
+.side-short{color:var(--red)}
+.side-none{color:var(--gray)}
+.zona-amarela{color:var(--yellow)}
+.zona-verde{color:var(--green)}
+.zona-vermelha{color:var(--red)}
+.risco-baixo{color:var(--green)}
+.risco-medio{color:var(--yellow)}
+.risco-alto{color:var(--red)}
+.prio-baixa{color:var(--green)}
+.prio-media{color:var(--yellow)}
+.prio-alta{color:var(--red)}
+.smallNote{margin-top:10px; color:var(--muted); font-size:12px}
+.err{margin-top:10px; color:var(--red); font-weight:800; font-size:12px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="header">
+        <div>
+          <h1>AUTOTRADER-PRO</h1>
+          <div class="sub">
+            Painel único (PRO) • dados em <b>/api/pro</b><br/>
+            Metodologia (resumo): merge MFE+Posicional; filtro (LONG/SHORT) • ranking por ASSERT% ↓, depois GANHO% ↓ • ALVO vem do motor; ETA é estimativa (aprox.)
+          </div>
+        </div>
+
+        <div class="actions">
+          <a class="badge top10" href="/top10">TOP 10</a>
+          <div class="updated">
+            <div class="lbl">Atualizado:</div>
+            <div class="val" id="updatedVal">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>PAR</th><th>SIDE</th><th>PREÇO</th><th>ALVO</th><th>GANHO %</th><th>ASSERT %</th><th>ETA</th><th>ZONA</th><th>RISCO</th><th>PRIORIDADE</th><th>DATA</th><th>HORA</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="smallNote" id="note"></div>
+      <div class="err" id="err" style="display:none;"></div>
+    </div>
+  </div>
+
+<script>
+
+function fmtPrice(x){
+  const v = Number(x);
+  if (!isFinite(v)) return "-";
+  const d = v < 1 ? 5 : 4;
+  return v.toFixed(d);
+}
+function fmtPct(x){
+  const v = Number(x);
+  if (!isFinite(v)) return "-";
+  return v.toFixed(2) + "%";
+}
+function byClass(base, value){
+  const v = String(value || "").toUpperCase();
+  if (base === "side"){
+    if (v === "LONG") return "side-long";
+    if (v === "SHORT") return "side-short";
+    return "side-none";
+  }
+  if (base === "zona"){
+    if (v.includes("AMARELA")) return "zona-amarela";
+    if (v.includes("VERDE")) return "zona-verde";
+    if (v.includes("VERMELHA")) return "zona-vermelha";
+    return "p-gray";
+  }
+  if (base === "risco"){
+    if (v === "BAIXO") return "risco-baixo";
+    if (v === "MÉDIO" || v === "MEDIO") return "risco-medio";
+    if (v === "ALTO") return "risco-alto";
+    return "p-gray";
+  }
+  if (base === "prioridade"){
+    if (v === "BAIXA") return "prio-baixa";
+    if (v === "MÉDIA" || v === "MEDIA") return "prio-media";
+    if (v === "ALTA") return "prio-alta";
+    return "p-gray";
+  }
+  return "p-gray";
+}
+
+async function fetchJson(url){
+  const r = await fetch(url, { cache: "no-store" });
+  if(!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+function setUpdated(el, data){
+  const u = data?.ultima_atualizacao || null;
+  if(!u){ el.textContent = "—"; return; }
+  el.textContent = u;
+}
+
+function renderTable(tbody, sinais){
+  tbody.innerHTML = "";
+  for (const s of (sinais || [])){
+    const tr = document.createElement("tr");
+
+    const par = document.createElement("td");
+    par.className = "col-par";
+    par.textContent = s.par ?? "-";
+    tr.appendChild(par);
+
+    const side = document.createElement("td");
+    side.className = "col-side " + byClass("side", s.side);
+    side.textContent = s.side ?? "-";
+    tr.appendChild(side);
+
+    const preco = document.createElement("td");
+    preco.className = "col-preco";
+    preco.textContent = fmtPrice(s.preco);
+    tr.appendChild(preco);
+
+    const alvo = document.createElement("td");
+    alvo.className = "col-alvo";
+    alvo.textContent = fmtPrice(s.alvo);
+    tr.appendChild(alvo);
+
+    const ganho = document.createElement("td");
+    const g = Number(s.ganho_pct);
+    ganho.className = "col-ganho " + (isFinite(g) ? (g >= 0 ? "p-green" : "p-red") : "p-gray");
+    ganho.textContent = fmtPct(s.ganho_pct);
+    tr.appendChild(ganho);
+
+    const assert = document.createElement("td");
+    assert.className = "col-assert p-green";
+    assert.textContent = fmtPct(s.assert_pct);
+    tr.appendChild(assert);
+
+    const eta = document.createElement("td");
+    eta.className = "col-eta";
+    eta.textContent = s.eta ?? "-";
+    tr.appendChild(eta);
+
+    const zona = document.createElement("td");
+    zona.className = "col-zona " + byClass("zona", s.zona);
+    zona.textContent = s.zona ?? "-";
+    tr.appendChild(zona);
+
+    const risco = document.createElement("td");
+    risco.className = "col-risco " + byClass("risco", s.risco);
+    risco.textContent = s.risco ?? "-";
+    tr.appendChild(risco);
+
+    const prio = document.createElement("td");
+    prio.className = "col-prioridade " + byClass("prioridade", s.prioridade);
+    prio.textContent = s.prioridade ?? "-";
+    tr.appendChild(prio);
+
+    const data = document.createElement("td");
+    data.className = "col-data";
+    data.textContent = s.data ?? "-";
+    tr.appendChild(data);
+
+    const hora = document.createElement("td");
+    hora.className = "col-hora";
+    hora.textContent = s.hora ?? "-";
+    tr.appendChild(hora);
+
+    tbody.appendChild(tr);
+  }
+}
+
+
+async function loadOnce() {
+  const errEl = document.getElementById("err");
+  errEl.style.display = "none";
+  try {
+    const data = await fetchJson("/api/pro");
+    setUpdated(document.getElementById("updatedVal"), data);
+    renderTable(document.getElementById("tbody"), data.sinais);
+    const note = document.getElementById("note");
+    const gainMin = data?.regra_gain_min ?? 3;
+    const vol = data?.status_volatilidade ?? "—";
+    note.textContent = `GAIN_MIN atual: ${gainMin}% • Volatilidade BTC: ${vol}`;
+  } catch(e) {
+    errEl.textContent = "Erro ao carregar /api/pro: " + e.message;
+    errEl.style.display = "block";
+  }
+}
+
+loadOnce();
+setInterval(loadOnce, 60000);
+</script>
+</body>
+</html>
