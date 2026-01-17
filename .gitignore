@@ -18,3 +18,12 @@ dist/*.bak_*
 
 # ambiente
 .env
+
+# secrets (NUNCA subir pro github)
+chave-automacao*.json
+*service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx
+.env*
