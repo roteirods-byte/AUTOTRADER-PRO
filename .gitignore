@@ -5,11 +5,16 @@ __pycache__/
 *.bak_*
 _backup_modular_*/
 
-# runtime data
+# runtime data (gerado)
 data/*.json
+data/hist/
 
 # dist backups
 dist/*.bak_*
 
-# historico gerado
-data/hist/
+# logs e zips
+*.log
+*.zip
+
+# ambiente
+.env
