@@ -132,6 +132,22 @@ td.col-hora{width:80px}
 .smallNote{margin-top:10px; color:var(--muted); font-size:12px}
 .err{margin-top:10px; color:var(--red); font-weight:800; font-size:12px}
 </style>
+
+<style id="top10-colors">
+/* === CORES: ZONA / RISCO / PRIORIDADE === */
+.td-zona.verde { color:#00ff99 !important; font-weight:700; }
+.td-zona.amarela { color:#ffd166 !important; font-weight:700; }
+.td-zona.vermelha { color:#ff4d4d !important; font-weight:700; }
+
+.td-risco.baixo { color:#00ff99 !important; font-weight:700; }
+.td-risco.medio { color:#ffd166 !important; font-weight:700; }
+.td-risco.alto  { color:#ff4d4d !important; font-weight:700; }
+
+.td-prioridade.baixa { color:#00ff99 !important; font-weight:700; }
+.td-prioridade.media { color:#ffd166 !important; font-weight:700; }
+.td-prioridade.alta  { color:#ff4d4d !important; font-weight:700; }
+</style>
+
 </head>
 <body>
   <div class="wrap">
@@ -145,7 +161,7 @@ td.col-hora{width:80px}
         </div>
 
         <div class="actions">
-          <a class="badge main" href="/">PAINEL</a>
+          <a class="badge main" href="/full.html">PAINEL</a>
           <div class="updated">
             <div class="lbl">Atualizado:</div>
             <div class="val" id="updatedVal">—</div>
@@ -313,5 +329,77 @@ async function loadOnce() {
 loadOnce();
 setInterval(loadOnce, 60000);
 </script>
+
+<script id="top10-colors-js">
+function _normTxt(s){
+  return (s||"").toString().trim().toUpperCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+}
+
+function _findIdxByHeader(table){
+  const map = {};
+  const ths = table.querySelectorAll("thead th");
+  ths.forEach((th, i) => {
+    const t = _normTxt(th.textContent);
+    if (t === "ZONA") map.zona = i;
+    if (t === "RISCO") map.risco = i;
+    if (t === "PRIORIDADE") map.prioridade = i;
+  });
+  return map;
+}
+
+function applyTop10Colors(){
+  const table = document.querySelector("table");
+  if(!table) return;
+
+  const idx = _findIdxByHeader(table);
+  if (idx.zona == null || idx.risco == null || idx.prioridade == null) return;
+
+  const rows = table.querySelectorAll("tbody tr");
+  rows.forEach(row=>{
+    const tds = row.querySelectorAll("td");
+    if (!tds || tds.length < 5) return;
+
+    const tdZona = tds[idx.zona];
+    const tdRisco = tds[idx.risco];
+    const tdPri  = tds[idx.prioridade];
+
+    if(tdZona){
+      const z = _normTxt(tdZona.textContent);
+      tdZona.classList.add("td-zona");
+      tdZona.classList.toggle("verde", z.includes("VERD"));
+      tdZona.classList.toggle("amarela", z.includes("AMARE"));
+      tdZona.classList.toggle("vermelha", z.includes("VERMEL"));
+    }
+
+    if(tdRisco){
+      const r = _normTxt(tdRisco.textContent);
+      tdRisco.classList.add("td-risco");
+      tdRisco.classList.toggle("baixo", r.includes("BAIX"));
+      tdRisco.classList.toggle("medio", r.includes("MED"));
+      tdRisco.classList.toggle("alto",  r.includes("ALT"));
+    }
+
+    if(tdPri){
+      const p = _normTxt(tdPri.textContent);
+      tdPri.classList.add("td-prioridade");
+      tdPri.classList.toggle("baixa", p.includes("BAIX"));
+      tdPri.classList.toggle("media", p.includes("MED"));
+      tdPri.classList.toggle("alta",  p.includes("ALT"));
+    }
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const tbody = document.querySelector("table tbody");
+  if (tbody && window.MutationObserver) {
+    const obs = new MutationObserver(() => applyTop10Colors());
+    obs.observe(tbody, { childList: true, subtree: true });
+  }
+  setTimeout(applyTop10Colors, 300);
+  setInterval(applyTop10Colors, 2000);
+});
+</script>
+
 </body>
 </html>

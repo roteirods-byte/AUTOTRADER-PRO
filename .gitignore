@@ -27,3 +27,5 @@ chave-automacao*.json
 *.p12
 *.pfx
 .env*
+
+node_modules/
