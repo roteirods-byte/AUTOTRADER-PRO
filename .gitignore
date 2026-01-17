@@ -10,3 +10,6 @@ data/*.json
 
 # dist backups
 dist/*.bak_*
+
+# historico gerado
+data/hist/

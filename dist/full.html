@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>AUTOTRADER-PRO</title>
+  <style>
+    /* PRO_PANEL_V2 */
+    :root{
+      --bg:#061b2b;
+      --card:#0a2a3f;
+      --line:#123a52;
+      --text:#e8f1ff;
+      --muted:#9fb4c7;
+      --orange:#ff8c1a;
+      --green:#00e676;
+      --red:#ff1744;
+      --yellow:#ffd54f;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    .wrap{max-width:1200px;margin:28px auto;padding:0 18px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 16px 10px}
+    .top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+    .title{font-size:20px;font-weight:800;letter-spacing:.5px}
+    .sub{font-size:12px;color:var(--muted);margin-top:2px}
+    .updated{font-size:12px;color:var(--orange);font-weight:800;margin-top:6px}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th{color:var(--orange);font-size:12px;text-align:left;padding:10px 10px;border-bottom:1px solid var(--line)}
+    td{padding:10px 10px;border-bottom:1px solid rgba(18,58,82,.55);font-size:13px}
+    .muted{color:var(--muted)}
+    .sideLong{color:var(--green);font-weight:800}
+    .sideShort{color:var(--red);font-weight:800}
+    .sideNe{color:#ffffff;font-weight:800}
+    .gainOk{color:var(--green);font-weight:900}
+    .gainBad{color:var(--red);font-weight:900}
+    .assertOk{color:var(--green);font-weight:900}
+    .assertBad{color:var(--red);font-weight:900}
+    .zonaVerde{color:var(--green);font-weight:800}
+    .zonaAmarela{color:var(--yellow);font-weight:800}
+    .zonaVermelha{color:var(--red);font-weight:800}
+    .riscoBaixo{color:var(--green);font-weight:800}
+    .riscoMedio{color:var(--yellow);font-weight:800}
+    .riscoAlto{color:var(--red);font-weight:800}
+    .prioAlta{color:var(--red);font-weight:900}
+    .prioMedia{color:var(--orange);font-weight:900}
+    .prioBaixa{color:var(--green);font-weight:900}
+  .btnLink{display:inline-block;padding:6px 10px;border:1px solid rgba(18,58,82,.7);border-radius:10px;color:#8bd3ff;text-decoration:none;font-weight:800;font-size:12px}.btnLink:hover{opacity:.85}.rightBox{display:flex;gap:10px;align-items:center}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="top">
+        <div>
+          <div class="title">AUTOTRADER-PRO</div>
+          <div class="sub">Painel único (PRO) • dados em <b>/api/pro</b><br><span class="muted">Metodologia (resumo): filtro é só GANHO≥3 (senão: NÃO ENTRAR). ASSERT não filtra: <65% vermelho, ≥65% verde. Ranking por ASSERT% ↓, depois GANHO% ↓. ETA é estimativa (aprox.).</span></div>
+        </div>
+        <div class="rightBox"><a class="btnLink" href="/top10.html">TOP 10</a><div id="updated" class="updated">Atualizado: --</div></div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>PAR</th>
+            <th>SIDE</th>
+            <th>PREÇO</th>
+            <th>ALVO</th>
+            <th>GANHO %</th>
+            <th>ASSERT %</th>
+            <th>ETA</th>
+            <th>ZONA</th>
+            <th>RISCO</th>
+            <th>PRIORIDADE</th>
+            <th>DATA</th>
+            <th>HORA</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="12" class="muted">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const API = "/api/pro";
+
+    function fmtPrice(v){
+      const n = Number(v);
+      if (!isFinite(n)) return "0.0000";
+      // 4 casas (padrão profissional p/ cripto) sem poluir; se quiser dinâmico depois, ajustamos
+      return n.toFixed(4);
+    }
+
+    function clsSide(side){
+      const s = String(side||"").toUpperCase();
+      if (s.includes("LONG")) return "sideLong";
+      if (s.includes("SHORT")) return "sideShort";
+      return "sideNe";
+    }
+
+    function clsGain(g){
+      const n = Number(g);
+      return (isFinite(n) && n >= 3) ? "gainOk" : "gainBad";
+    }
+
+    function clsAssert(a){
+      const n = Number(a);
+      return (isFinite(n) && n >= 65) ? "assertOk" : "assertBad";
+    }
+
+    function clsZona(z){
+      const s = String(z||"").toUpperCase();
+      if (s.includes("VERDE")) return "zonaVerde";
+      if (s.includes("AMARE")) return "zonaAmarela";
+      if (s.includes("VERMEL")) return "zonaVermelha";
+      return "";
+    }
+
+    function clsRisco(r){
+      const s = String(r||"").toUpperCase();
+      if (s.includes("BAIX")) return "riscoBaixo";
+      if (s.includes("MÉD") || s.includes("MED")) return "riscoMedio";
+      if (s.includes("ALTO")) return "riscoAlto";
+      return "";
+    }
+
+    function clsPrio(p){
+      const s = String(p||"").toUpperCase();
+      if (s.includes("ALTA")) return "prioAlta";
+      if (s.includes("MÉD") || s.includes("MED")) return "prioMedia";
+      if (s.includes("BAIX")) return "prioBaixa";
+      return "";
+    }
+
+    async function load(){
+      const tbody = document.getElementById("tbody");
+      try{
+        const r = await fetch(API, { cache: "no-store" });
+        const data = await r.json();
+
+        document.getElementById("updated").textContent =
+          "Atualizado: " + (data.updated_brt || "--");
+
+        const lista = Array.isArray(data.lista) ? data.lista : [];
+        if (!lista.length){
+          tbody.innerHTML = `<tr><td colspan="12" class="muted">Sem dados.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = lista.map(x => {
+          const side = String(x.side||"NÃO ENTRAR");
+          const ganho = Number(x.ganho_pct||0);
+          const assertv = Number(x.assert_pct||0);
+
+          return `
+            <tr>
+              <td>${x.par||""}</td>
+              <td class="${clsSide(side)}">${side}</td>
+              <td>${fmtPrice(x.preco)}</td>
+              <td>${fmtPrice(x.alvo)}</td>
+              <td class="${clsGain(ganho)}">${isFinite(ganho)? ganho.toFixed(2):"0.00"}%</td>
+              <td class="${clsAssert(assertv)}">${isFinite(assertv)? assertv.toFixed(2):"0.00"}%</td>
+              <td>${x.eta||""}</td>
+              <td class="${clsZona(x.zona)}">${x.zona||""}</td>
+              <td class="${clsRisco(x.risco)}">${x.risco||""}</td>
+              <td class="${clsPrio(x.prioridade)}">${x.prioridade||""}</td>
+              <td>${x.data||""}</td>
+              <td>${x.hora||""}</td>
+            </tr>
+          `;
+        }).join("");
+      } catch (e) {
+        console.log("API /api/pro indisponível:", e);
+        // não polui a tela
+      }
+    }
+
+    load();
+    setInterval(load, 60_000);
+  </script>
+</body>
+</html>
