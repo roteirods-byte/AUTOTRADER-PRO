@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+
+# backups
+*.bak_*
+_backup_modular_*/
+
+# runtime data
+data/*.json
+
+# dist backups
+dist/*.bak_*
