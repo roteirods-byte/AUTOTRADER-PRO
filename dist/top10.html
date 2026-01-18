@@ -156,8 +156,7 @@ td.col-hora{width:80px}
         <div>
           <h1>AUTOTRADER-PRO — TOP 10</h1>
           <div class="sub">
-            Top 10 por GANHO% (já filtrado por GAIN_MIN e TTL no motor) • dados em <b>/api/top10</b>
-          </div>
+            Top 10 por GANHO% (já filtrado por GANHO%≥3 no motor) • dados em <b>/api/top10</b><br><span style="opacity:.85">Metodologia (resumo); Ranking por ASSERT% ↓, depois GANHO% ↓. ETA = tempo estimado até o ALVO. ZONA = zona do sinal (ex.: AMARELA). RISCO = nível (BAIXO/MÉDIO/ALTO). PRIORIDADE = urgência (BAIXA/MÉDIA/ALTA).</span></div>
         </div>
 
         <div class="actions">
@@ -188,10 +187,20 @@ td.col-hora{width:80px}
 <script>
 
 function fmtPrice(x){
-  const v = Number(x);
-  if (!isFinite(v)) return "-";
-  const d = v < 1 ? 5 : 4;
-  return v.toFixed(d);
+  const n = Number(x);
+  if (!isFinite(n)) return "-";
+  const a = Math.abs(n);
+  if (a >= 1) return n.toFixed(4);
+  let d = 5;
+  if (a >= 0.1) d = 5;
+  else if (a >= 0.01) d = 6;
+  else if (a >= 0.001) d = 7;
+  else if (a >= 0.0001) d = 8;
+  else if (a >= 0.00001) d = 9;
+  else d = 10;
+  let s = n.toFixed(d);
+  s = s.replace(/0+$/,'').replace(/\.$/,'');
+  return s;
 }
 function fmtPct(x){
   const v = Number(x);
@@ -319,7 +328,7 @@ async function loadOnce() {
     const note = document.getElementById("note");
     const gainMin = data?.regra_gain_min ?? 3;
     const vol = data?.status_volatilidade ?? "—";
-    note.textContent = `GAIN_MIN atual: ${gainMin}% • Volatilidade BTC: ${vol}`;
+    note.textContent = `GAIN_MIN (GANHO) atual: ${gainMin}% • Volatilidade BTC: ${vol}`;
   } catch(e) {
     errEl.textContent = "Erro ao carregar /api/top10: " + e.message;
     errEl.style.display = "block";

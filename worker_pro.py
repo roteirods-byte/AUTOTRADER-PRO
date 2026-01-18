@@ -87,14 +87,36 @@ URLS = [
   ("MFE",        "http://127.0.0.1:8082/api/entrada"),
 ]
 
-# >>> MAIS ASSERTIVO AQUI <<<
-ASSERT_MIN = 65.0
-GAIN_MIN   = 3.0
+# >>> PARAMETROS DO MODELO (AJUSTE SEM MEXER NO CODIGO: via ENV) <<<
+# OBS: Agora o GANHO é calculado como ROE% (ganho líquido no FUTURO USDT PERP),
+#      considerando alavancagem + taxas + funding (estimado) + slippage (estimado).
+#      Se quiser trocar o perfil (sua corretora/VIP), ajuste as variáveis abaixo.
+
+import os
+
+# Regra visual (não filtra): ASSERT só colore (>=65 verde, <65 vermelho no site)
+ASSERT_MIN = float(os.environ.get("ASSERT_MIN", "65"))
+
+# Regra de operação: só publica se ROE% >= GAIN_MIN
+GAIN_MIN   = float(os.environ.get("GAIN_MIN", "3"))
+
+# FUTUROS USDT PERP (ganho real)
+LEV_DEFAULT        = float(os.environ.get("LEV_DEFAULT", "10"))         # sua alavancagem padrão
+FEE_TAKER_PER_SIDE = float(os.environ.get("FEE_TAKER_PER_SIDE", "0.0006"))  # 0.06% por ordem (conservador)
+FEE_MAKER_PER_SIDE = float(os.environ.get("FEE_MAKER_PER_SIDE", "0.0002"))  # 0.02% por ordem
+USE_TAKER          = (str(os.environ.get("USE_TAKER", "1")).strip() != "0")
+
+# Custo estimado (conservador) por 8h de posição (funding varia; aqui usamos ABS)
+FUNDING_ABS_8H     = float(os.environ.get("FUNDING_ABS_8H", "0.0001"))      # 0.01% por 8h
+
+# Slippage/Spread estimado por lado (ABS)
+SLIPPAGE_PER_SIDE  = float(os.environ.get("SLIPPAGE_PER_SIDE", "0.0002"))   # 0.02% por ordem
 
 # Universo oficial (77 moedas)
 UNIVERSE_77 = ['AAVE', 'ADA', 'APE', 'APT', 'AR', 'ARB', 'ATOM', 'AVAX', 'AXS', 'BAT', 'BCH', 'BLUR', 'BNB', 'BONK', 'BTC', 'COMP', 'CRV', 'DASH', 'DENT', 'DGB', 'DOGE', 'DOT', 'EGLD', 'SUI', 'ETC', 'ETH', 'FET', 'FIL', 'FLOKI', 'FLOW', 'S', 'GALA', 'GLM', 'GRT', 'HBAR', 'ICP', 'IMX', 'INJ', 'IOST', 'KAS', 'KAVA', 'KSM', 'LINK', 'LTC', 'MANA', 'POL', 'SKY', 'NEAR', 'NEO', 'OMG', 'ONT', 'OP', 'ORDI', 'PEPE', 'QNT', 'QTUM', 'RENDER', 'ROSE', 'RUNE', 'SAND', 'SEI', 'SHIB', 'SNX', 'SOL', 'STX', 'SUSHI', 'THETA', 'TIA', 'TRX', 'UNI', 'VET', 'XEM', 'XLM', 'XRP', 'XVS', 'ZEC', 'ZRX']
 
-OUT_PATH = "/home/roteiro_ds/AUTOTRADER-PRO/data/pro.json"
+DATA_DIR = os.environ.get("DATA_DIR") or os.path.join(os.path.dirname(__file__), "data")
+OUT_PATH = os.path.join(DATA_DIR, "pro.json")
 
 # ---------------- HTTP helpers ----------------
 
@@ -264,7 +286,8 @@ def _norm_gate(raw):
   return out
 
 def _fetch_okx(par, bar, limit=240, timeout=12):
-  inst = f"{par}-USDT"
+  # OKX SWAP (USDT Perp)
+  inst = f"{par}-USDT-SWAP"
   url = OKX_CANDLES + "?" + urlencode({"instId": inst, "bar": bar, "limit": str(limit)})
   raw = _http_json(url, timeout=timeout)
   # OKX usa code="0"
@@ -324,23 +347,41 @@ def _agg_4h_from_1h(c1):
 
 
 def fetch_1h_4h(par):
-  # PATCH2D: 1H real (OKX/GATE) + 4H agregado local -> reduz requests e evita zeros
+  # FUTUROS USDT PERP (prioridade): Binance FAPI -> Bybit Linear -> OKX SWAP -> (último caso) Gate Spot
+  # 4H é agregado local a partir do 1H (menos requests, mais estabilidade)
   c1=[]; c4=[]
   src={"1h":"", "4h":""}
 
-  # pega mais histórico 1H para formar 4H suficiente
-  LIMIT_1H = 480
+  LIMIT_1H = 320  # suficiente para EMA/RSI e para formar 4H
 
+  # 1) Binance Futures
   try:
-    c1 = _fetch_okx(par, "1H", limit=LIMIT_1H)
-    if c1: src["1h"]="OKX"
+    c1 = _fetch_binance(par, "1h", limit=LIMIT_1H)
+    if c1: src["1h"]="BINANCE_FAPI"
   except Exception:
     c1=[]
 
+  # 2) Bybit (Linear USDT Perp)
+  if not c1:
+    try:
+      c1 = _fetch_bybit(par, "60", limit=LIMIT_1H)
+      if c1: src["1h"]="BYBIT_LINEAR"
+    except Exception:
+      c1=[]
+
+  # 3) OKX SWAP
+  if not c1:
+    try:
+      c1 = _fetch_okx(par, "1H", limit=LIMIT_1H)
+      if c1: src["1h"]="OKX_SWAP"
+    except Exception:
+      c1=[]
+
+  # 4) Último caso: Gate Spot
   if not c1:
     try:
       c1 = _fetch_gate(par, "1h", limit=LIMIT_1H)
-      if c1: src["1h"]="GATE"
+      if c1: src["1h"]="GATE_SPOT"
     except Exception:
       c1=[]
 
@@ -402,8 +443,15 @@ def clamp(a, x, b):
   return max(a, min(x, b))
 
 def parse_eta_hours(eta):
-  m=re.search(r"(\d+)\s*h", str(eta).lower())
-  return int(m.group(1)) if m else 999999
+  s = str(eta).lower()
+  m=re.search(r"(\d+)\s*h", s)
+  if m:
+    return int(m.group(1))
+  m=re.search(r"(\d+)\s*d", s)
+  if m:
+    return int(m.group(1)) * 24
+  # sem ETA: assume 8h (conservador)
+  return 8
 
 # ---------------- ALVO + ETA (mesmo motor) ----------------
 
@@ -491,6 +539,11 @@ def zona_risco_prioridade(assert_pct, ganho_pct, eta_h):
 # ---------------- Main ----------------
 
 def main():
+  # garante pasta de saída
+  try:
+    os.makedirs(DATA_DIR, exist_ok=True)
+  except Exception:
+    pass
   now = datetime.now(TZ)
   updated_brt = now.strftime("%Y-%m-%d %H:%M")
   data = now.strftime("%Y-%m-%d")
@@ -1410,8 +1463,23 @@ def main():
     alvo, eta = calc_target_and_eta(side, price, atr_4h, atr_1h, GAIN_MIN, e20_1, e50_1, e20_4, e50_4)
     if alvo <= 0: return None
 
-    ganho_pct = ((alvo-price)/price)*100.0 if side=="LONG" else ((price-alvo)/price)*100.0
-    ganho_pct = max(0.0, ganho_pct)
+    # ----- GANHO REAL (FUTURO USDT PERP) -----
+    # 1) movimento bruto (% no preço)
+    ganho_bruto_pct = ((alvo-price)/price)*100.0 if side=="LONG" else ((price-alvo)/price)*100.0
+    ganho_bruto_pct = float(max(0.0, ganho_bruto_pct))
+
+    # 2) custos estimados no NOTIONAL (taxas + slippage + funding)
+    fee_side = (FEE_TAKER_PER_SIDE if USE_TAKER else FEE_MAKER_PER_SIDE)
+    eta_h = parse_eta_hours(eta)
+    # funding: custo absoluto por 8h (conservador). Se ETA vier vazio/0, assume 8h.
+    funding_mult = max(1.0, float(eta_h or 0.0)/8.0)
+    custo_notional_pct = (2.0*(fee_side + SLIPPAGE_PER_SIDE) + (FUNDING_ABS_8H * funding_mult)) * 100.0
+
+    # 3) ganho líquido no notional
+    ganho_liq_notional_pct = float(ganho_bruto_pct - custo_notional_pct)
+
+    # 4) ROE% (impacto na margem, considerando alavancagem)
+    ganho_pct = float(ganho_liq_notional_pct * LEV_DEFAULT)
 
     
 
@@ -1448,7 +1516,7 @@ def main():
       if vr < 0.002: adj -= 2.0   # “travado”
       if vr > 0.02:  adj -= 2.0   # “nervoso demais”
 
-    eta_h = parse_eta_hours(eta)
+    # (eta_h já calculado acima)
     if eta_h > 90: adj -= 4.0     # muito demorado
     if eta_h < 6:  adj -= 1.0     # rápido demais (spike)
 
@@ -1463,6 +1531,10 @@ def main():
       "preco": float(price),
       "alvo": float(alvo),
       "ganho_pct": float(ganho_pct),
+      "ganho_bruto_pct": float(ganho_bruto_pct),
+      "ganho_liq_notional_pct": float(ganho_liq_notional_pct),
+      "custo_notional_pct": float(custo_notional_pct),
+      "alav": float(LEV_DEFAULT),
       "assert_pct": float(assert_pct),
       "eta": eta,
       "zona": zona,
@@ -1479,7 +1551,7 @@ def main():
     for fut in as_completed(futs):
       r=fut.result()
       if not r: continue
-      if r["assert_pct"] < ASSERT_MIN: continue
+      # ASSERT NÃO FILTRA (só cor no site). Mantemos a regra de operação no GANHO (GAIN_MIN).
       if r["ganho_pct"] < GAIN_MIN: continue
       results.append(r)
 

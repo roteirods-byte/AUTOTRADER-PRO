@@ -53,7 +53,7 @@ app.get("/api/pro", (req, res) => {
 
 app.get("/api/top10", (req, res) => {
   const GAIN_MIN = 3;
-  const ASSERT_MIN = 65;
+  // ASSERT não filtra (só cor no site). TOP10 é por ROE% (ganho_pct) >= GAIN_MIN.
 
   // 1) tenta ler top10.json
   const pTop = path.join(DATA_DIR, "top10.json");
@@ -79,7 +79,7 @@ app.get("/api/top10", (req, res) => {
         const side = up(x.side ?? x.sinal ?? x.side_src);
         return { x, gain, asrt, side };
       })
-      .filter((r) => (r.side === "LONG" || r.side === "SHORT") && r.asrt >= ASSERT_MIN && r.gain >= GAIN_MIN)
+      .filter((r) => (r.side === "LONG" || r.side === "SHORT") && r.gain >= GAIN_MIN)
       .sort((a, b) => (b.asrt - a.asrt) || (b.gain - a.gain))
       .slice(0, 10)
       .map((r) => r.x);
