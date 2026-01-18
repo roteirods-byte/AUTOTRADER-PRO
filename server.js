@@ -96,6 +96,21 @@ app.get("/api/top10", (req, res) => {
   res.json(data);
 });
 
+
+app.get("/api/audit", (req, res) => {
+  const pAudit = path.join(DATA_DIR, "audit.json");
+  const data = safeReadJson(pAudit, {
+    status: "SEM AUDITORIA",
+    ts: null,
+    ts_brt: null,
+    pro_itens: null,
+    top10_itens: null,
+    details: "Ainda não foi gerado audit.json em DATA_DIR."
+  });
+  res.setHeader("Cache-Control", "no-store");
+  res.json(data);
+});
+
 // HTMLs (rotas obrigatórias)
 app.get("/", (req, res) => res.sendFile(path.join(DIST_DIR, "index.html")));
 app.get("/top10", (req, res) => res.sendFile(path.join(DIST_DIR, "top10.html")));

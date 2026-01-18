@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+  <title>AUTOTRADER-PRO — AUDITORIA</title>
+  <style>
+:root{
+  --bg:#05263a; --panel:#062c44; --line:rgba(255,255,255,.08);
+  --text:#eaf2ff; --muted:rgba(234,242,255,.7);
+  --accent:#ff9a1a; --green:#22c55e; --red:#ef4444; --yellow:#fbbf24; --bluebtn:#7dd3fc;
+}
+*{box-sizing:border-box} html,body{height:100%}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--text)}
+.wrap{max-width:980px;margin:18px auto;padding:0 14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 10px 24px rgba(0,0,0,.25)}
+.header{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+h1{margin:0;font-size:22px;letter-spacing:.2px}
+.sub{margin-top:6px;color:var(--muted);font-size:12px;line-height:1.35;max-width:760px}
+.actions{display:flex;gap:10px;align-items:center}
+.badge{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:12px;border:1px solid var(--line);color:var(--text);text-decoration:none;font-weight:800;font-size:12px;background:rgba(0,0,0,.15)}
+.badge.main{background:rgba(34,197,94,.08); border-color:rgba(34,197,94,.25)}
+.badge.top10{background:rgba(125,211,252,.10); border-color:rgba(125,211,252,.35)}
+.badge.audit{background:rgba(255,154,26,.10); border-color:rgba(255,154,26,.35)}
+.kpis{margin-top:14px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.kpi{border:1px solid var(--line);border-radius:12px;padding:12px;background:rgba(0,0,0,.12)}
+.kpi .lbl{color:var(--muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.3px}
+.kpi .val{margin-top:6px;font-size:16px;font-weight:900}
+.ok{color:var(--green)} .warn{color:var(--yellow)} .err{color:var(--red)}
+.box{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:12px;background:rgba(0,0,0,.10)}
+.box h2{margin:0 0 8px 0;font-size:13px;color:var(--accent);letter-spacing:.3px}
+pre{margin:0;white-space:pre-wrap;word-break:break-word;font-size:12px;color:var(--text)}
+.small{margin-top:10px;color:var(--muted);font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="header">
+        <div>
+          <h1>AUTOTRADER-PRO — AUDITORIA</h1>
+          <div class="sub">
+            Mostra se a API e os dados estão consistentes (ex.: /api/pro com 77 itens e /api/top10 com 10 itens).
+            Atualiza automaticamente.
+          </div>
+        </div>
+        <div class="actions">
+          <a class="badge main" href="/full.html">PAINEL</a>
+          <a class="badge top10" href="/top10.html">TOP 10</a>
+          <span class="badge audit" id="statusPill">—</span>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="lbl">Última auditoria</div><div class="val" id="tsVal">—</div></div>
+        <div class="kpi"><div class="lbl">Itens /api/pro</div><div class="val" id="proVal">—</div></div>
+        <div class="kpi"><div class="lbl">Itens /api/top10</div><div class="val" id="top10Val">—</div></div>
+      </div>
+
+      <div class="box">
+        <h2>Detalhes</h2>
+        <pre id="details">Carregando…</pre>
+      </div>
+
+      <div class="small">Fonte: <b>/api/audit</b></div>
+    </div>
+  </div>
+
+<script>
+async function loadAudit(){
+  const pill = document.getElementById("statusPill");
+  const tsVal = document.getElementById("tsVal");
+  const proVal = document.getElementById("proVal");
+  const top10Val = document.getElementById("top10Val");
+  const details = document.getElementById("details");
+
+  try{
+    const r = await fetch("/api/audit?ts=" + Date.now(), {cache:"no-store"});
+    const a = await r.json();
+
+    const st = String(a.status || "SEM AUDITORIA").toUpperCase();
+    pill.textContent = st;
+
+    pill.classList.remove("ok","warn","err");
+    if (st === "OK") pill.classList.add("ok");
+    else if (st === "AVISO" || st === "WARN") pill.classList.add("warn");
+    else if (st === "ERRO" || st === "ERROR") pill.classList.add("err");
+    else pill.classList.add("warn");
+
+    tsVal.textContent = a.ts_brt || a.ts || "—";
+    proVal.textContent = (a.pro_itens ?? "—");
+    top10Val.textContent = (a.top10_itens ?? "—");
+
+    details.textContent = (a.details || "—");
+  }catch(e){
+    pill.textContent = "ERRO";
+    pill.classList.remove("ok","warn"); pill.classList.add("err");
+    details.textContent = "Falha ao carregar /api/audit: " + (e && e.message ? e.message : String(e));
+  }
+}
+loadAudit();
+setInterval(loadAudit, 10000);
+</script>
+</body>
+</html>
