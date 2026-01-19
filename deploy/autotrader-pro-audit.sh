@@ -11,6 +11,7 @@ ts_brt=$(TZ=America/Sao_Paulo date +"%Y-%m-%d %H:%M:%S")
 status="OK"
 details=""
 
+# DATA_DIR do service (se existir), senão fallback
 data_dir=""
 envline=$(systemctl show -p Environment "$SERVICE_NAME" 2>/dev/null || true)
 if echo "$envline" | grep -q "DATA_DIR="; then
@@ -22,27 +23,35 @@ mkdir -p "$(dirname "$LOG_LAST")" "$(dirname "$LOG_SUM")" "$data_dir" || true
 add(){ details+="$1"$'\n'; }
 
 count_list () {
-  # $1 = endpoint (/api/pro ou /api/top10)
-  # tenta 3x para evitar pegar JSON “no meio da escrita”
-  local ep="$1" raw="" n=-1 i=1
+  local ep="$1" tmp="" n=-1 i=1
   for i in 1 2 3; do
-    raw=$(curl -sS --max-time 5 "$BASE_URL$ep" || true)
-    n=$(python3 - <<'PY' <<<"$raw"
-import json,sys
+    tmp="$(mktemp)"
+    # timeout maior (evita JSON cortado)
+    curl -sS --connect-timeout 2 --max-time 15 "$BASE_URL$ep" -o "$tmp" || true
+
+    n=$(python3 - <<'PY' "$tmp"
+import json,sys,os
+p=sys.argv[1]
 try:
-  d=json.load(sys.stdin)
+  raw=open(p,'rb').read()
+  # se veio vazio, falha
+  if not raw.strip():
+    print(-1); raise SystemExit
+  d=json.loads(raw.decode('utf-8', errors='strict'))
   s=d.get("lista") or d.get("sinais") or []
   print(len(s) if isinstance(s,list) else 0)
 except Exception:
   print(-1)
 PY
 )
+    rm -f "$tmp" || true
+
     [[ "$n" =~ ^-?[0-9]+$ ]] || n=-1
     if [ "$n" -ge 0 ]; then
       echo "$n"
       return 0
     fi
-    sleep 0.4
+    sleep 0.6
   done
   echo "-1"
   return 0
@@ -51,7 +60,7 @@ PY
 add "==== AUDIT $ts_brt ===="
 
 # health
-health=$(curl -sS --max-time 3 "$BASE_URL/health" || true)
+health=$(curl -sS --connect-timeout 2 --max-time 5 "$BASE_URL/health" || true)
 if echo "$health" | grep -q '"ok":true'; then
   add "health: OK"
 else
@@ -81,6 +90,7 @@ elif [ "$top10_itens" -ne 10 ]; then
   add "AVISO: api/top10 não tem 10 itens (tem $top10_itens)"
 fi
 
+# logs
 {
   echo "$details"
   echo "STATUS_FINAL: $status"
@@ -88,6 +98,7 @@ fi
 
 echo "$ts_brt | STATUS=$status | pro=$pro_itens | top10=$top10_itens" >> "$LOG_SUM"
 
+# json para o site
 python3 - <<PY
 import json, os
 data = {
