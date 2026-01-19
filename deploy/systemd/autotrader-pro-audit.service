@@ -1,0 +1,10 @@
+# /etc/systemd/system/autotrader-pro-audit.service
+[Unit]
+Description=Auditoria AUTOTRADER-PRO (validacao /api/pro e /api/top10)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/local/bin/autotrader-pro-audit.sh

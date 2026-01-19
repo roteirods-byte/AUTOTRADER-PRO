@@ -1,0 +1,13 @@
+# /etc/systemd/system/autotrader-pro-audit.timer
+[Unit]
+Description=Timer auditoria AUTOTRADER-PRO
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=20s
+Unit=autotrader-pro-audit.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,10 +1,10 @@
+# /etc/systemd/system/autotrader-pro-worker.service
 [Unit]
-Description=AUTOTRADER-PRO Worker (Python) - gera JSON
+Description=AUTOTRADER-PRO worker (gera data/pro.json)
 After=network.target
 
 [Service]
 Type=oneshot
 User=roteiro_ds
 WorkingDirectory=/home/roteiro_ds/AUTOTRADER-PRO
-Environment=DATA_DIR=/home/roteiro_ds/AUTOTRADER-PRO/data
-ExecStart=/usr/bin/python3 -m engine.worker_pro
+ExecStart=/usr/bin/python3 /home/roteiro_ds/AUTOTRADER-PRO/worker_pro.py

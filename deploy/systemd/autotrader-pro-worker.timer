@@ -1,11 +1,12 @@
+# /etc/systemd/system/autotrader-pro-worker.timer
 [Unit]
-Description=AUTOTRADER-PRO Worker timer (a cada 10 minutos)
+Description=AUTOTRADER-PRO worker timer (5min)
 
 [Timer]
-OnBootSec=30
-OnUnitActiveSec=600
+OnBootSec=60s
+OnUnitActiveSec=300s
+AccuracySec=10s
 Unit=autotrader-pro-worker.service
-Persistent=true
 
 [Install]
 WantedBy=timers.target
