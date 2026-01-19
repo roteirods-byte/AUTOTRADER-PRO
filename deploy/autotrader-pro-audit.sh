@@ -21,18 +21,13 @@ fi
 mkdir -p "$(dirname "$LOG_LAST")" "$(dirname "$LOG_SUM")" "$data_dir" || true
 add(){ details+="$1"$'\n'; }
 
-add "==== AUDIT $ts_brt ===="
-
-health=$(curl -sS --max-time 3 "$BASE_URL/health" || true)
-if echo "$health" | grep -q '"ok":true'; then
-  add "health: OK"
-else
-  status="ERRO"
-  add "health: ERRO (sem resposta ou inválido)"
-fi
-
-pro=$(curl -sS --max-time 5 "$BASE_URL/api/pro" || true)
-pro_itens=$(python3 - <<'PY' <<<"$pro"
+count_list () {
+  # $1 = endpoint (/api/pro ou /api/top10)
+  # tenta 3x para evitar pegar JSON “no meio da escrita”
+  local ep="$1" raw="" n=-1 i=1
+  for i in 1 2 3; do
+    raw=$(curl -sS --max-time 5 "$BASE_URL$ep" || true)
+    n=$(python3 - <<'PY' <<<"$raw"
 import json,sys
 try:
   d=json.load(sys.stdin)
@@ -42,7 +37,30 @@ except Exception:
   print(-1)
 PY
 )
-[[ "$pro_itens" =~ ^-?[0-9]+$ ]] || pro_itens=-1
+    [[ "$n" =~ ^-?[0-9]+$ ]] || n=-1
+    if [ "$n" -ge 0 ]; then
+      echo "$n"
+      return 0
+    fi
+    sleep 0.4
+  done
+  echo "-1"
+  return 0
+}
+
+add "==== AUDIT $ts_brt ===="
+
+# health
+health=$(curl -sS --max-time 3 "$BASE_URL/health" || true)
+if echo "$health" | grep -q '"ok":true'; then
+  add "health: OK"
+else
+  status="ERRO"
+  add "health: ERRO (sem resposta ou inválido)"
+fi
+
+# api/pro
+pro_itens=$(count_list "/api/pro")
 add "api/pro itens: $pro_itens"
 if [ "$pro_itens" -lt 0 ]; then
   status="ERRO"
@@ -52,18 +70,8 @@ elif [ "$pro_itens" -eq 0 ]; then
   add "AVISO: api/pro com 0 itens"
 fi
 
-top=$(curl -sS --max-time 5 "$BASE_URL/api/top10" || true)
-top10_itens=$(python3 - <<'PY' <<<"$top"
-import json,sys
-try:
-  d=json.load(sys.stdin)
-  s=d.get("sinais") or d.get("lista") or []
-  print(len(s) if isinstance(s,list) else 0)
-except Exception:
-  print(-1)
-PY
-)
-[[ "$top10_itens" =~ ^-?[0-9]+$ ]] || top10_itens=-1
+# api/top10
+top10_itens=$(count_list "/api/top10")
 add "api/top10 itens: $top10_itens"
 if [ "$top10_itens" -lt 0 ]; then
   status="ERRO"
