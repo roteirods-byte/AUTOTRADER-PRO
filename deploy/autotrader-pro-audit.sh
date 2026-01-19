@@ -11,7 +11,6 @@ ts_brt=$(TZ=America/Sao_Paulo date +"%Y-%m-%d %H:%M:%S")
 status="OK"
 details=""
 
-# DATA_DIR do service (se existir), senão fallback
 data_dir=""
 envline=$(systemctl show -p Environment "$SERVICE_NAME" 2>/dev/null || true)
 if echo "$envline" | grep -q "DATA_DIR="; then
@@ -24,7 +23,6 @@ add(){ details+="$1"$'\n'; }
 
 add "==== AUDIT $ts_brt ===="
 
-# health
 health=$(curl -sS --max-time 3 "$BASE_URL/health" || true)
 if echo "$health" | grep -q '"ok":true'; then
   add "health: OK"
@@ -33,14 +31,13 @@ else
   add "health: ERRO (sem resposta ou inválido)"
 fi
 
-# api/pro
 pro=$(curl -sS --max-time 5 "$BASE_URL/api/pro" || true)
 pro_itens=$(python3 - <<'PY' <<<"$pro"
 import json,sys
 try:
   d=json.load(sys.stdin)
-  sinais=d.get("lista") or d.get("sinais") or []
-  print(len(sinais) if isinstance(sinais,list) else 0)
+  s=d.get("lista") or d.get("sinais") or []
+  print(len(s) if isinstance(s,list) else 0)
 except Exception:
   print(-1)
 PY
@@ -55,14 +52,13 @@ elif [ "$pro_itens" -eq 0 ]; then
   add "AVISO: api/pro com 0 itens"
 fi
 
-# api/top10
 top=$(curl -sS --max-time 5 "$BASE_URL/api/top10" || true)
 top10_itens=$(python3 - <<'PY' <<<"$top"
 import json,sys
 try:
   d=json.load(sys.stdin)
-  sinais=d.get("sinais") or d.get("lista") or []
-  print(len(sinais) if isinstance(sinais,list) else 0)
+  s=d.get("sinais") or d.get("lista") or []
+  print(len(s) if isinstance(s,list) else 0)
 except Exception:
   print(-1)
 PY
@@ -77,7 +73,6 @@ elif [ "$top10_itens" -ne 10 ]; then
   add "AVISO: api/top10 não tem 10 itens (tem $top10_itens)"
 fi
 
-# logs
 {
   echo "$details"
   echo "STATUS_FINAL: $status"
@@ -85,7 +80,6 @@ fi
 
 echo "$ts_brt | STATUS=$status | pro=$pro_itens | top10=$top10_itens" >> "$LOG_SUM"
 
-# audit.json para o site
 python3 - <<PY
 import json, os
 data = {
