@@ -107,6 +107,30 @@ fi
 
 # api/top10
 top10_itens=$(count_list "/api/top10")
+
+# --- FIX_TOP10_FILE: manter data/top10.json sempre atualizado ---
+tmp_top10=$(mktemp)
+curl -sS --connect-timeout 2 --max-time 15 "$BASE_URL/api/top10" -o "$tmp_top10" || true
+ok_top10=$(python3 - <<"PY" "$tmp_top10"
+import json,sys
+p=sys.argv[1]
+try:
+  raw=open(p,"rb").read()
+  if not raw.strip():
+    print(0); raise SystemExit
+  d=json.loads(raw.decode("utf-8", errors="strict"))
+  s=d.get("lista") or d.get("sinais") or []
+  print(1 if isinstance(s,list) and len(s)>0 else 0)
+except Exception:
+  print(0)
+PY
+)
+if [ "$ok_top10" = "1" ]; then
+  mv -f "$tmp_top10" "$data_dir/top10.json"
+  chmod 644 "$data_dir/top10.json" || true
+else
+  rm -f "$tmp_top10" || true
+fi
 add "api/top10 itens: $top10_itens (esperado: $EXPECT_TOP10)"
 if [ "$top10_itens" -lt 0 ]; then
   status="ERRO"
