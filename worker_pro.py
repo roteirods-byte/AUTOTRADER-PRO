@@ -774,7 +774,7 @@ def main():
         for sym in UNIVERSE_77:
           it = mp.get(sym)
           if not isinstance(it, dict):
-            it = {'par': sym, 'side': 'NÃO ENTRAR', 'ganho_pct': '0.00', 'assert_pct': 0.0, 'assert_cor': 'VERMELHA', 'motivo': 'SEM DADOS'}
+            it = {'par': sym, 'side': 'NÃO ENTRAR', 'ganho_pct': '0.00', 'assert_pct': 0.0, 'assert_cor': 'VERMELHA'}
           it.setdefault('par', sym)
           it.setdefault('side', 'NÃO ENTRAR')
           it.setdefault('ganho_pct', '0.00')
@@ -1342,27 +1342,6 @@ def main():
       except Exception:
         pass
 
-# PATCH_MOTIVO_ENFORCE: garante motivo em TODOS os itens antes de salvar
-try:
-  _lst = payload.get('lista') or payload.get('sinais') or []
-  if isinstance(_lst, list):
-    for _it in _lst:
-      if not isinstance(_it, dict):
-        continue
-      _side = _it.get('side') or _it.get('sinal')
-      if _side == 'NÃO ENTRAR':
-        if not _it.get('motivo'):
-          try:
-            _g = float(_it.get('ganho_pct') or _it.get('ganho') or 0.0)
-          except Exception:
-            _g = 0.0
-          _it['motivo'] = (f"GANHO<{GAIN_MIN:g}%" if _g < GAIN_MIN else 'SEM DADOS')
-      else:
-        if 'motivo' not in _it:
-          _it['motivo'] = ''
-except Exception:
-  pass
-
       json.dump(payload, f,ensure_ascii=False,indent=2)
     print(f"OK pro.json atualizado: {OUT_PATH} | itens=0 | updated_brt={updated_brt}")
     return
@@ -1514,10 +1493,8 @@ except Exception:
     
 
     side_out = side
-    motivo = ""
     if ganho_pct < GAIN_MIN:
       side_out = "NÃO ENTRAR"
-      motivo = f"GANHO<{GAIN_MIN:g}%"
 # ASSERT reforçada (multi-timeframe)
     base_assert = universe.get(par, {}).get("assert_src") or 62.0
     adj=0.0
@@ -1560,7 +1537,6 @@ except Exception:
       "src": ex or universe[par]["src"],
       "par": par,
       "side": side_out,
-      "motivo": motivo,
       "preco": float(price),
       "alvo": float(alvo),
       "ganho_pct": float(ganho_pct),
@@ -1585,8 +1561,7 @@ except Exception:
       r=fut.result()
       if not r: continue
       # ASSERT NÃO FILTRA (só cor no site). Mantemos a regra de operação no GANHO (GAIN_MIN).
-      # REMOVIDO: ganho<GAIN_MIN vira NÃO ENTRAR + motivo
-      # if r["ganho_pct"] < GAIN_MIN: continue
+      if r["ganho_pct"] < GAIN_MIN: continue
       results.append(r)
 
   # ranking final
@@ -1768,27 +1743,6 @@ except Exception:
             pass
     except Exception:
       pass
-
-# PATCH_MOTIVO_ENFORCE: garante motivo em TODOS os itens antes de salvar
-try:
-  _lst = payload.get('lista') or payload.get('sinais') or []
-  if isinstance(_lst, list):
-    for _it in _lst:
-      if not isinstance(_it, dict):
-        continue
-      _side = _it.get('side') or _it.get('sinal')
-      if _side == 'NÃO ENTRAR':
-        if not _it.get('motivo'):
-          try:
-            _g = float(_it.get('ganho_pct') or _it.get('ganho') or 0.0)
-          except Exception:
-            _g = 0.0
-          _it['motivo'] = (f"GANHO<{GAIN_MIN:g}%" if _g < GAIN_MIN else 'SEM DADOS')
-      else:
-        if 'motivo' not in _it:
-          _it['motivo'] = ''
-except Exception:
-  pass
 
     json.dump(payload, f,ensure_ascii=False,indent=2)
   print(f"OK pro.json atualizado: {OUT_PATH} | itens={len(results)} | updated_brt={updated_brt}")
