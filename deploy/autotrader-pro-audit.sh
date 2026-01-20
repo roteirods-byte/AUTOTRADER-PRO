@@ -8,8 +8,6 @@ LOG_SUM="/var/log/autotrader-pro-audit.log"
 
 EXPECT_PRO=78
 EXPECT_TOP10=10
-
-# arquivo "velho" => AVISO
 MAX_AGE_SEC=900  # 15 min
 
 ts_iso=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -138,6 +136,60 @@ if [ "$ok_top10" = "1" ]; then
   chmod 644 "$data_dir/top10.json" || true
 else
   rm -f "$tmp_top10" || true
+fi
+
+# --- SOURCES: resumo das exchanges usadas (lê src do pro.json/top10.json) ---
+src_summary=$(python3 - <<'PY' "$data_dir/pro.json" "$data_dir/top10.json"
+import json,sys
+from collections import Counter, defaultdict
+
+def load(p):
+  try:
+    return json.load(open(p,"r",encoding="utf-8"))
+  except Exception:
+    return {}
+
+def summarize(d):
+  lst = d.get("lista") or d.get("sinais") or []
+  c1 = Counter()
+  c4 = Counter()
+  call = Counter()
+  for it in lst:
+    src = it.get("src")
+    if isinstance(src, dict):
+      s1 = src.get("1h") or src.get("1H") or ""
+      s4 = src.get("4h") or src.get("4H") or ""
+      if s1: c1[s1]+=1
+      if s4: c4[s4]+=1
+      for v in src.values():
+        if isinstance(v,str) and v:
+          call[v]+=1
+    elif isinstance(src,str) and src:
+      call[src]+=1
+  def fmt(c):
+    if not c: return ""
+    return " ".join([f"{k}={v}" for k,v in c.most_common(6)])
+  return fmt(c1), fmt(c4), fmt(call)
+
+pro = load(sys.argv[1])
+top = load(sys.argv[2])
+
+p1,p4,pa = summarize(pro)
+t1,t4,ta = summarize(top)
+
+out=[]
+if p1: out.append(f"src_pro_1h: {p1}")
+if p4: out.append(f"src_pro_4h: {p4}")
+if pa: out.append(f"src_pro_all: {pa}")
+if t1: out.append(f"src_top10_1h: {t1}")
+if t4: out.append(f"src_top10_4h: {t4}")
+if ta: out.append(f"src_top10_all: {ta}")
+
+print("\n".join(out).strip())
+PY
+)
+if [ -n "$src_summary" ]; then
+  add "$src_summary"
 fi
 
 # freshness (arquivos)
