@@ -7,9 +7,15 @@ LOG_LAST="/var/log/autotrader-pro-audit_last.txt"
 LOG_SUM="/var/log/autotrader-pro-audit.log"
 
 EXPECT_PRO=78
+EXPECT_TOP10=10
+
+# arquivo "velho" => AVISO
+MAX_AGE_SEC=900  # 15 min
 
 ts_iso=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 ts_brt=$(TZ=America/Sao_Paulo date +"%Y-%m-%d %H:%M:%S")
+now=$(date +%s)
+
 status="OK"
 details=""
 
@@ -28,15 +34,13 @@ count_list () {
   local ep="$1" tmp="" n=-1 i=1
   for i in 1 2 3; do
     tmp="$(mktemp)"
-    # timeout maior (evita JSON cortado)
     curl -sS --connect-timeout 2 --max-time 15 "$BASE_URL$ep" -o "$tmp" || true
 
     n=$(python3 - <<'PY' "$tmp"
-import json,sys,os
+import json,sys
 p=sys.argv[1]
 try:
   raw=open(p,'rb').read()
-  # se veio vazio, falha
   if not raw.strip():
     print(-1); raise SystemExit
   d=json.loads(raw.decode('utf-8', errors='strict'))
@@ -59,6 +63,23 @@ PY
   return 0
 }
 
+check_age () {
+  local f="$1" label="$2"
+  if [ -f "$f" ]; then
+    local mt age
+    mt=$(stat -c %Y "$f" 2>/dev/null || echo 0)
+    age=$(( now - mt ))
+    add "$label idade_seg: $age"
+    if [ "$age" -gt "$MAX_AGE_SEC" ]; then
+      [ "$status" = "OK" ] && status="AVISO"
+      add "AVISO: $label desatualizado (> ${MAX_AGE_SEC}s)"
+    fi
+  else
+    [ "$status" = "OK" ] && status="AVISO"
+    add "AVISO: $label não encontrado"
+  fi
+}
+
 add "==== AUDIT $ts_brt ===="
 
 # health
@@ -72,29 +93,33 @@ fi
 
 # api/pro
 pro_itens=$(count_list "/api/pro")
-add "api/pro itens: $pro_itens"
-  if [ "$pro_itens" -ge 0 ] && [ "$pro_itens" -ne "$EXPECT_PRO" ]; then
-    [ "$status" = "OK" ] && status="AVISO"
-    add "AVISO: api/pro não tem $EXPECT_PRO itens (tem $pro_itens)"
-  fi
+add "api/pro itens: $pro_itens (esperado: $EXPECT_PRO)"
 if [ "$pro_itens" -lt 0 ]; then
   status="ERRO"
   add "api/pro: ERRO (json inválido)"
 elif [ "$pro_itens" -eq 0 ]; then
   [ "$status" = "OK" ] && status="AVISO"
   add "AVISO: api/pro com 0 itens"
+elif [ "$pro_itens" -ne "$EXPECT_PRO" ]; then
+  [ "$status" = "OK" ] && status="AVISO"
+  add "AVISO: api/pro não tem $EXPECT_PRO itens (tem $pro_itens)"
 fi
 
 # api/top10
 top10_itens=$(count_list "/api/top10")
-add "api/top10 itens: $top10_itens"
+add "api/top10 itens: $top10_itens (esperado: $EXPECT_TOP10)"
 if [ "$top10_itens" -lt 0 ]; then
   status="ERRO"
   add "api/top10: ERRO (json inválido)"
-elif [ "$top10_itens" -ne 10 ]; then
+elif [ "$top10_itens" -ne "$EXPECT_TOP10" ]; then
   [ "$status" = "OK" ] && status="AVISO"
-  add "AVISO: api/top10 não tem 10 itens (tem $top10_itens)"
+  add "AVISO: api/top10 não tem $EXPECT_TOP10 itens (tem $top10_itens)"
 fi
+
+# freshness (arquivos)
+check_age "$data_dir/pro.json"   "pro.json"
+check_age "$data_dir/top10.json" "top10.json"
+check_age "$data_dir/audit.json" "audit.json"
 
 # logs
 {
@@ -107,12 +132,16 @@ echo "$ts_brt | STATUS=$status | pro=$pro_itens | top10=$top10_itens" >> "$LOG_S
 # json para o site
 python3 - <<PY
 import json, os
+def to_int(s):
+  try: return int(s)
+  except: return None
+
 data = {
   "status": "$status",
   "ts": "$ts_iso",
   "ts_brt": "$ts_brt",
-  "pro_itens": int("$pro_itens"),
-  "top10_itens": int("$top10_itens"),
+  "pro_itens": to_int("$pro_itens"),
+  "top10_itens": to_int("$top10_itens"),
   "details": """$details""".strip()
 }
 out = os.path.join("$data_dir", "audit.json")
