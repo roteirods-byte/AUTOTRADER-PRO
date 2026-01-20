@@ -112,8 +112,17 @@ FUNDING_ABS_8H     = float(os.environ.get("FUNDING_ABS_8H", "0.0001"))      # 0.
 # Slippage/Spread estimado por lado (ABS)
 SLIPPAGE_PER_SIDE  = float(os.environ.get("SLIPPAGE_PER_SIDE", "0.0002"))   # 0.02% por ordem
 
-# Universo oficial (77 moedas)
-UNIVERSE_77 = ['AAVE', 'ADA', 'APE', 'APT', 'AR', 'ARB', 'ATOM', 'AVAX', 'AXS', 'BAT', 'BCH', 'BLUR', 'BNB', 'BONK', 'BTC', 'COMP', 'CRV', 'DASH', 'DENT', 'DGB', 'DOGE', 'DOT', 'EGLD', 'SUI', 'ETC', 'ETH', 'FET', 'FIL', 'FLOKI', 'FLOW', 'S', 'GALA', 'GLM', 'GRT', 'HBAR', 'ICP', 'IMX', 'INJ', 'IOST', 'KAS', 'KAVA', 'KSM', 'LINK', 'LTC', 'MANA', 'POL', 'SKY', 'NEAR', 'NEO', 'OMG', 'ONT', 'OP', 'ORDI', 'PEPE', 'QNT', 'QTUM', 'RENDER', 'ROSE', 'RUNE', 'SAND', 'SEI', 'SHIB', 'SNX', 'SOL', 'STX', 'SUSHI', 'THETA', 'TIA', 'TRX', 'UNI', 'VET', 'XEM', 'XLM', 'XRP', 'XVS', 'ZEC', 'ZRX']
+# Universo oficial (78 moedas) — ordem alfabética, sem USDT
+UNIVERSE = [
+  "AAVE","ADA","APE","APT","AR","ARB","ATOM","AVAX","AXS","BAT","BCH","BLUR","BNB","BONK","BTC",
+  "COMP","CRV","DASH","DGB","DENT","DOGE","DOT","EGLD","EOS","ETC","ETH","FET","FIL","FLOKI","FLOW",
+  "FTM","GALA","GLM","GRT","HBAR","ICP","IMX","INJ","IOST","KAS","KAVA","KSM","LINK","LTC","MANA",
+  "MATIC","MKR","NEAR","NEO","OMG","ONT","OP","ORDI","PEPE","QNT","QTUM","RNDR","ROSE","RUNE","SAND",
+  "SEI","SHIB","SNX","SOL","STX","SUI","SUSHI","THETA","TIA","TRX","UNI","VET","XEM","XLM","XRP",
+  "XVS","ZEC","ZRX"
+]
+
+UNIVERSE_77 = UNIVERSE  # compat (mantém o resto do código funcionando)
 
 DATA_DIR = os.environ.get("DATA_DIR") or os.path.join(os.path.dirname(__file__), "data")
 OUT_PATH = os.path.join(DATA_DIR, "pro.json")

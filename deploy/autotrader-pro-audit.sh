@@ -6,6 +6,8 @@ BASE_URL="http://127.0.0.1:8095"
 LOG_LAST="/var/log/autotrader-pro-audit_last.txt"
 LOG_SUM="/var/log/autotrader-pro-audit.log"
 
+EXPECT_PRO=78
+
 ts_iso=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 ts_brt=$(TZ=America/Sao_Paulo date +"%Y-%m-%d %H:%M:%S")
 status="OK"
@@ -71,6 +73,10 @@ fi
 # api/pro
 pro_itens=$(count_list "/api/pro")
 add "api/pro itens: $pro_itens"
+  if [ "$pro_itens" -ge 0 ] && [ "$pro_itens" -ne "$EXPECT_PRO" ]; then
+    [ "$status" = "OK" ] && status="AVISO"
+    add "AVISO: api/pro não tem $EXPECT_PRO itens (tem $pro_itens)"
+  fi
 if [ "$pro_itens" -lt 0 ]; then
   status="ERRO"
   add "api/pro: ERRO (json inválido)"
