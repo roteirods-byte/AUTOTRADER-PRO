@@ -1169,7 +1169,7 @@ def main():
               pass
 
           # remove moedas sem feed (evita preco=0 no painel)
-          payload["lista"]=[it for it in payload["lista"] if not (it.get("par")=="EOS" and float(it.get("preco") or 0.0)<=0)]
+# DISABLED_KEEP_78:           payload["lista"]=[it for it in payload["lista"] if not (it.get("par")=="EOS" and float(it.get("preco") or 0.0)<=0)]
 
 
 
@@ -1338,7 +1338,7 @@ def main():
             except Exception:
               pass
 
-          payload["lista"]=[it for it in payload["lista"] if not (isinstance(it,dict) and it.get("par")=="EOS" and float(it.get("preco") or 0.0)<=0)]
+# DISABLED_KEEP_78:           payload["lista"]=[it for it in payload["lista"] if not (isinstance(it,dict) and it.get("par")=="EOS" and float(it.get("preco") or 0.0)<=0)]
       except Exception:
         pass
 
