@@ -1384,6 +1384,30 @@ def main():
       except Exception:
         pass
 
+      ### PATCH_SEM_DADOS ###
+      try:
+        _lst = payload.get('lista') or payload.get('sinais') or []
+        if isinstance(_lst, list):
+          def _f(x):
+            try:
+              return float(x)
+            except Exception:
+              return 0.0
+          for _it in _lst:
+            if not isinstance(_it, dict):
+              continue
+            _side = _it.get('side') or _it.get('sinal')
+            if _side != 'NÃO ENTRAR':
+              continue
+            _preco = _f(_it.get('preco'))
+            _alvo  = _f(_it.get('alvo'))
+            _atr4  = _f(_it.get('atr_4h') or _it.get('atr4h') or _it.get('atr'))
+            # prioridade: SEM DADOS
+            if _preco <= 0 or _alvo <= 0 or (_atr4 != 0.0 and _atr4 <= 0):
+              _it['motivo'] = 'SEM DADOS'
+      except Exception:
+        pass
+
       json.dump(payload, f,ensure_ascii=False,indent=2)
     print(f"OK pro.json atualizado: {OUT_PATH} | itens=0 | updated_brt={updated_brt}")
     return
@@ -1818,6 +1842,30 @@ def main():
           else:
             if 'motivo' not in _it or _it.get('motivo') is None:
               _it['motivo'] = ''
+    except Exception:
+      pass
+
+    ### PATCH_SEM_DADOS ###
+    try:
+      _lst = payload.get('lista') or payload.get('sinais') or []
+      if isinstance(_lst, list):
+        def _f(x):
+          try:
+            return float(x)
+          except Exception:
+            return 0.0
+        for _it in _lst:
+          if not isinstance(_it, dict):
+            continue
+          _side = _it.get('side') or _it.get('sinal')
+          if _side != 'NÃO ENTRAR':
+            continue
+          _preco = _f(_it.get('preco'))
+          _alvo  = _f(_it.get('alvo'))
+          _atr4  = _f(_it.get('atr_4h') or _it.get('atr4h') or _it.get('atr'))
+          # prioridade: SEM DADOS
+          if _preco <= 0 or _alvo <= 0 or (_atr4 != 0.0 and _atr4 <= 0):
+            _it['motivo'] = 'SEM DADOS'
     except Exception:
       pass
 
