@@ -60,7 +60,7 @@ app.get("/api/top10", (req, res) => {
   };
   const up = (v) => String(v || "").trim().toUpperCase();
 
-  // TOP10 SEMPRE vem do PRO (pro.json). Não usa top10.json para não “travar” horário.
+  // TOP10 SEMPRE vem do PRO (pro.json). Não usa top10.json.
   const pPro = path.join(DATA_DIR, "pro.json");
   const pro = safeReadJson(pPro, { updated_brt: null, status_volatilidade: "desconhecido" });
 
@@ -81,15 +81,13 @@ app.get("/api/top10", (req, res) => {
 
   const ultima = pro.updated_brt || pro.ultima_atualizacao || pro.updated || null;
 
-  const data = {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({
     ultima_atualizacao: ultima,
     regra_gain_min: GAIN_MIN,
     status_volatilidade: pro.status_volatilidade || "desconhecido",
     sinais: top
-  };
-
-  res.setHeader("Cache-Control", "no-store");
-  res.json(data);
+  });
 });
 
 
