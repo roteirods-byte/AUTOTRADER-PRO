@@ -94,6 +94,24 @@ URLS = [
 
 import os
 
+# PATCH_ATOMIC_JSON: evita arquivo cortado (write tmp + replace)
+def _atomic_write_json(path, data, mode=0o644):
+  import os, json
+  tmp = str(path) + '.tmp'
+  with open(tmp, 'w', encoding='utf-8') as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+    f.flush()
+    try:
+      os.fsync(f.fileno())
+    except Exception:
+      pass
+  os.replace(tmp, str(path))
+  try:
+    os.chmod(str(path), mode)
+  except Exception:
+    pass
+
+
 # Regra visual (não filtra): ASSERT só colore (>=65 verde, <65 vermelho no site)
 ASSERT_MIN = float(os.environ.get("ASSERT_MIN", "65"))
 
