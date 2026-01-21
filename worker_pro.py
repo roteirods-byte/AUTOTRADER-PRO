@@ -103,6 +103,12 @@ KILL_SWITCH = str(os.environ.get("KILL_SWITCH","0")).strip().lower() in ("1","tr
 
 # FUTUROS USDT PERP (ganho real)
 LEV_DEFAULT        = float(os.environ.get("LEV_DEFAULT", "10"))         # sua alavancagem padrão
+LEV_MAX            = float(os.environ.get("LEV_MAX", "20"))            # limite máximo de alavancagem
+# clamp de segurança
+try:
+  LEV_DEFAULT = max(1.0, min(float(LEV_DEFAULT), float(LEV_MAX)))
+except Exception:
+  LEV_DEFAULT = 1.0
 FEE_TAKER_PER_SIDE = float(os.environ.get("FEE_TAKER_PER_SIDE", "0.0006"))  # 0.06% por ordem (conservador)
 FEE_MAKER_PER_SIDE = float(os.environ.get("FEE_MAKER_PER_SIDE", "0.0002"))  # 0.02% por ordem
 USE_TAKER          = (str(os.environ.get("USE_TAKER", "1")).strip() != "0")
