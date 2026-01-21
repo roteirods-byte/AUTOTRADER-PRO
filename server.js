@@ -53,66 +53,46 @@ app.get("/api/pro", (req, res) => {
 
 app.get("/api/top10", (req, res) => {
   const GAIN_MIN = 3;
-  // ASSERT não filtra (só cor no site). TOP10 é por ROE% (ganho_pct) >= GAIN_MIN.
 
-  // 1) tenta ler top10.json
-  const pTop = path.join(DATA_DIR, "top10.json");
-  let data = safeReadJson(pTop, null);
+  const num = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const up = (v) => String(v || "").trim().toUpperCase();
 
-  // 2) se top10.json estiver ausente/vazio, monta TOP10 a partir do pro.json (fallback)
-  const precisaFallback = (!data || !Array.isArray(data.sinais) || data.sinais.length === 0);
-  if (precisaFallback) {
-    const pPro = path.join(DATA_DIR, "pro.json");
-    const pro = safeReadJson(pPro, { updated_brt: null, meta: {}, sinais: [] });
-    const sinais = Array.isArray(pro.sinais) ? pro.sinais : [];
+  // TOP10 SEMPRE vem do PRO (pro.json). Não usa top10.json para não “travar” horário.
+  const pPro = path.join(DATA_DIR, "pro.json");
+  const pro = safeReadJson(pPro, { updated_brt: null, status_volatilidade: "desconhecido" });
 
-    const num = (v) => {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : 0;
-    };
-    const up = (v) => String(v || "").trim().toUpperCase();
+  // aceita os 2 formatos (lista / sinais), para ficar robusto
+  const sinais = Array.isArray(pro.sinais) ? pro.sinais : (Array.isArray(pro.lista) ? pro.lista : []);
 
-    const top = sinais
-      .map((x) => {
-        const gain = num(x.ganho_pct ?? x.ganho ?? x.gain ?? x.ganho_perc);
-        const asrt = num(x.assert_pct ?? x.assert ?? x.assert_perc);
-        const side = up(x.side ?? x.sinal ?? x.side_src);
-        return { x, gain, asrt, side };
-      })
-      .filter((r) => (r.side === "LONG" || r.side === "SHORT") && r.gain >= GAIN_MIN)
-      .sort((a, b) => (b.asrt - a.asrt) || (b.gain - a.gain))
-      .slice(0, 10)
-      .map((r) => r.x);
+  const top = sinais
+    .map((x) => {
+      const gain = num(x.ganho_pct ?? x.ganho ?? x.gain ?? x.ganho_perc);
+      const asrt = num(x.assert_pct ?? x.assert ?? x.assert_perc);
+      const side = up(x.side ?? x.sinal ?? x.side_src);
+      return { x, gain, asrt, side };
+    })
+    .filter((r) => (r.side === "LONG" || r.side === "SHORT") && r.gain >= GAIN_MIN)
+    .sort((a, b) => (b.asrt - a.asrt) || (b.gain - a.gain))
+    .slice(0, 10)
+    .map((r) => r.x);
 
-    data = {
-      ultima_atualizacao: pro.updated_brt || pro.updated || null,
-      regra_gain_min: GAIN_MIN,
-      status_volatilidade: pro.status_volatilidade || "desconhecido",
-      sinais: top
-    };
-  }
+  const ultima = pro.updated_brt || pro.ultima_atualizacao || pro.updated || null;
+
+  const data = {
+    ultima_atualizacao: ultima,
+    regra_gain_min: GAIN_MIN,
+    status_volatilidade: pro.status_volatilidade || "desconhecido",
+    sinais: top
+  };
 
   res.setHeader("Cache-Control", "no-store");
   res.json(data);
 });
 
 
-app.get("/api/audit", (req, res) => {
-  const pAudit = path.join(DATA_DIR, "audit.json");
-  const data = safeReadJson(pAudit, {
-    status: "SEM AUDITORIA",
-    ts: null,
-    ts_brt: null,
-    pro_itens: null,
-    top10_itens: null,
-    details: "Ainda não foi gerado audit.json em DATA_DIR."
-  });
-  res.setHeader("Cache-Control", "no-store");
-  res.json(data);
-});
-
-// HTMLs (rotas obrigatórias)
-app.get("/", (req, res) => res.sendFile(path.join(DIST_DIR, "index.html")));
 app.get("/top10", (req, res) => res.sendFile(path.join(DIST_DIR, "top10.html")));
 
 app.listen(PORT, "0.0.0.0", () => {
