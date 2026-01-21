@@ -1342,6 +1342,28 @@ def main():
       except Exception:
         pass
 
+      ### MOTIVO_ENFORCE ###
+      try:
+        _lst = payload.get('lista') or payload.get('sinais') or []
+        if isinstance(_lst, list):
+          for _it in _lst:
+            if not isinstance(_it, dict):
+              continue
+            _side = _it.get('side') or _it.get('sinal') or ''
+            if _side == 'NÃO ENTRAR':
+              _m = _it.get('motivo')
+              if _m is None or _m == '':
+                try:
+                  _g = float(_it.get('ganho_pct') or _it.get('ganho') or 0.0)
+                except Exception:
+                  _g = 0.0
+                _it['motivo'] = (('GANHO<' + str(GAIN_MIN) + '%') if _g < GAIN_MIN else 'SEM DADOS')
+            else:
+              if 'motivo' not in _it or _it.get('motivo') is None:
+                _it['motivo'] = ''
+      except Exception:
+        pass
+
       json.dump(payload, f,ensure_ascii=False,indent=2)
     print(f"OK pro.json atualizado: {OUT_PATH} | itens=0 | updated_brt={updated_brt}")
     return
@@ -1741,6 +1763,28 @@ def main():
                 it["eta"]=(it.get("eta") or "") + " (BN)"
           except Exception:
             pass
+    except Exception:
+      pass
+
+    ### MOTIVO_ENFORCE ###
+    try:
+      _lst = payload.get('lista') or payload.get('sinais') or []
+      if isinstance(_lst, list):
+        for _it in _lst:
+          if not isinstance(_it, dict):
+            continue
+          _side = _it.get('side') or _it.get('sinal') or ''
+          if _side == 'NÃO ENTRAR':
+            _m = _it.get('motivo')
+            if _m is None or _m == '':
+              try:
+                _g = float(_it.get('ganho_pct') or _it.get('ganho') or 0.0)
+              except Exception:
+                _g = 0.0
+              _it['motivo'] = (('GANHO<' + str(GAIN_MIN) + '%') if _g < GAIN_MIN else 'SEM DADOS')
+          else:
+            if 'motivo' not in _it or _it.get('motivo') is None:
+              _it['motivo'] = ''
     except Exception:
       pass
 
