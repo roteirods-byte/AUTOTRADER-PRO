@@ -4,6 +4,7 @@ from urllib.parse import urlencode
 
 # ---------------- Exchanges: OKX -> GATE -> KUCOIN ----------------
 def okx_inst(par):
+  par = ALIAS_OKX.get(par, par)
   p = (par or "").strip().upper().replace("USDT","").replace("-","").replace("_","")
   return f"{p}-USDT"
 
@@ -93,6 +94,15 @@ URLS = [
 #      Se quiser trocar o perfil (sua corretora/VIP), ajuste as variáveis abaixo.
 
 import os
+
+# PATCH_ITEM5_ALIAS_OKX: FTM<->S, MATIC<->POL, MKR<->SKY, RNDR<->RENDER
+ALIAS_OKX = {
+  "FTM":"S","S":"FTM",
+  "MATIC":"POL","POL":"MATIC",
+  "MKR":"SKY","SKY":"MKR",
+  "RNDR":"RENDER","RENDER":"RNDR",
+}
+
 
 # PATCH_ATOMIC_JSON: evita arquivo cortado (write tmp + replace)
 def _atomic_write_json(path, data, mode=0o644):
