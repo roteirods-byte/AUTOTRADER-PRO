@@ -99,6 +99,7 @@ ASSERT_MIN = float(os.environ.get("ASSERT_MIN", "65"))
 
 # Regra de operação: só publica se ROE% >= GAIN_MIN
 GAIN_MIN   = float(os.environ.get("GAIN_MIN", "3"))
+KILL_SWITCH = str(os.environ.get("KILL_SWITCH","0")).strip().lower() in ("1","true","yes","on")
 
 # FUTUROS USDT PERP (ganho real)
 LEV_DEFAULT        = float(os.environ.get("LEV_DEFAULT", "10"))         # sua alavancagem padrão
@@ -1342,6 +1343,19 @@ def main():
       except Exception:
         pass
 
+      ### KILL_SWITCH_ENFORCE ###
+      try:
+        if 'KILL_SWITCH' in globals() and KILL_SWITCH:
+          _lst = payload.get('lista') or payload.get('sinais') or []
+          if isinstance(_lst, list):
+            for _it in _lst:
+              if isinstance(_it, dict):
+                _it['side'] = 'NÃO ENTRAR'
+                _it['motivo'] = 'KILL_SWITCH'
+                _it['ganho_pct'] = 0.0
+      except Exception:
+        pass
+
       ### MOTIVO_ENFORCE ###
       try:
         _lst = payload.get('lista') or payload.get('sinais') or []
@@ -1763,6 +1777,19 @@ def main():
                 it["eta"]=(it.get("eta") or "") + " (BN)"
           except Exception:
             pass
+    except Exception:
+      pass
+
+    ### KILL_SWITCH_ENFORCE ###
+    try:
+      if 'KILL_SWITCH' in globals() and KILL_SWITCH:
+        _lst = payload.get('lista') or payload.get('sinais') or []
+        if isinstance(_lst, list):
+          for _it in _lst:
+            if isinstance(_it, dict):
+              _it['side'] = 'NÃO ENTRAR'
+              _it['motivo'] = 'KILL_SWITCH'
+              _it['ganho_pct'] = 0.0
     except Exception:
       pass
 
