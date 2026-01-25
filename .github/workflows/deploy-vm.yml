@@ -1,0 +1,49 @@
+name: Deploy VM
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Copia o projeto para a VM (código do server + html)
+      - name: Upload repo to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_PORT }}
+          source: "."
+          target: "/home/roteiro_ds/AUTOTRADER-PRO"
+          strip_components: 0
+
+      # Reinicia API + publica HTML no diretório do site
+      - name: Restart services + publish HTML
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          port: ${{ secrets.VM_PORT }}
+          script: |
+            set -e
+            cd /home/roteiro_ds/AUTOTRADER-PRO
+
+            # dependências (se tiver)
+            if [ -f package-lock.json ]; then
+              npm ci --omit=dev || npm ci || true
+            fi
+
+            # reinicia a API
+            sudo systemctl restart autotrader-pro.service
+
+            # publica HTML do painel
+            sudo mkdir -p /var/www/paineljorge
+            sudo cp -f ./full.html ./top10.html ./audit.html ./favicon.ico /var/www/paineljorge/ 2>/dev/null || true
+            sudo nginx -t
+            sudo systemctl reload nginx
