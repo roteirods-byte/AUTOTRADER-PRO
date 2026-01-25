@@ -1,64 +1,61 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>AUTOTRADER-PRO — AUDITORIA</title>
-<style>
-  body{margin:0;font-family:system-ui,Segoe UI,Arial;background:#05283a;color:#dbe7ee}
-  .wrap{max-width:900px;margin:24px auto;padding:0 16px}
-  .card{background:#063247;border-radius:14px;padding:18px;box-shadow:0 10px 28px rgba(0,0,0,.25)}
-  h1{margin:0 0 6px 0;font-size:20px}
-  .sub{opacity:.85;font-size:12px;line-height:1.35}
-  .row{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
-  .kpi{flex:1;min-width:220px;background:#052e43;border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:12px}
-  .kpi .t{color:#ff9a2f;font-weight:900;font-size:11px}
-  .kpi .v{font-weight:900;font-size:16px;margin-top:6px}
-  .btn{border:1px solid rgba(255,255,255,.16);background:#0b3c55;color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:700}
-  .ok{background:#0f5d52}
-  pre{background:#041f2e;border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:12px;overflow:auto;font-size:12px}
-</style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AUTOTRADER-PRO — AUDITORIA</title>
+  <style>
+    :root{ --bg:#062d3b; --panel:#083243; --text:#e8f0f2; --muted:#9bb7c3; --orange:#ff8a00; --line: rgba(255,255,255,.08); --bluebtn:#1aa3a3; }
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;}
+    .wrap{max-width:1180px;margin:24px auto;padding:0 14px;}
+    .card{background:var(--panel);border-radius:14px;padding:18px;box-shadow:0 10px 30px rgba(0,0,0,.25);}
+    .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;}
+    h1{margin:0;font-size:22px;}
+    .updated{color:var(--orange);font-weight:800;font-size:13px;}
+    .btn{border:1px solid rgba(255,255,255,.18);background:transparent;color:var(--text);padding:8px 12px;border-radius:10px;font-weight:800;cursor:pointer}
+    .btn.primary{background:var(--bluebtn);border-color:transparent;}
+    pre{margin-top:14px;background:rgba(0,0,0,.18);padding:14px;border-radius:12px;overflow:auto;border:1px solid var(--line);color:#d7e7ee;}
+    .muted{color:var(--muted);font-size:12px;}
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;">
-      <div>
-        <h1>AUTOTRADER-PRO — AUDITORIA</h1>
-        <div class="sub">Confere consistência entre <b>/api/pro</b> e <b>/api/top10</b>. Fonte: <b>/api/audit</b></div>
+  <div class="wrap">
+    <div class="card">
+      <div class="top">
+        <div>
+          <h1>AUTOTRADER-PRO — AUDITORIA</h1>
+          <div class="muted">Dados em <b>/api/audit</b></div>
+          <div style="margin-top:10px">
+            <button class="btn primary" id="btnAtualizar">ATUALIZAR</button>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="updated" id="updated">Atualizado: —</div>
+          <div style="margin-top:10px;display:flex;gap:10px;justify-content:flex-end">
+            <button class="btn" onclick="location.href='top10.html'">TOP 10</button>
+            <button class="btn" onclick="location.href='full.html'">PAINEL</button>
+          </div>
+        </div>
       </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn" onclick="location.href='/full.html'">PAINEL</button>
-        <button class="btn" onclick="location.href='/top10.html'">TOP 10</button>
-        <button class="btn ok" onclick="load()">ATUALIZAR</button>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="kpi"><div class="t">ÚLTIMA AUDITORIA</div><div class="v" id="ts">—</div></div>
-      <div class="kpi"><div class="t">ITENS /API/PRO</div><div class="v" id="pro">—</div></div>
-      <div class="kpi"><div class="t">ITENS /API/TOP10</div><div class="v" id="top10">—</div></div>
-    </div>
-
-    <div class="kpi">
-      <div class="t">DETALHES</div>
-      <pre id="det">—</pre>
+      <pre id="out">Carregando…</pre>
     </div>
   </div>
-</div>
-
 <script>
-const $=(id)=>document.getElementById(id);
 async function load(){
-  const r = await fetch("/api/audit", {cache:"no-store", credentials:"same-origin"});
-  const j = await r.json();
-  $("ts").textContent = j.ts_brt || j.ts || "—";
-  $("pro").textContent = (j.pro_itens!=null ? j.pro_itens : "—");
-  $("top10").textContent = (j.top10_itens!=null ? j.top10_itens : "—");
-  $("det").textContent = j.details || JSON.stringify(j,null,2);
+  const out = document.getElementById("out");
+  out.textContent = "Carregando…";
+  try{
+    const r = await fetch("/api/audit?ts=" + Date.now(), {cache:"no-store"});
+    const j = await r.json();
+    const up = (j && j.meta && j.meta.updated_brt) ? j.meta.updated_brt : (j.updated_brt || "—");
+    document.getElementById("updated").textContent = "Atualizado: " + up;
+    out.textContent = JSON.stringify(j, null, 2);
+  }catch(e){
+    out.textContent = "Erro ao carregar.";
+  }
 }
+document.getElementById("btnAtualizar").addEventListener("click", load);
 load();
-setInterval(load, 60000);
 </script>
 </body>
 </html>

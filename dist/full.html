@@ -1,158 +1,159 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>AUTOTRADER-PRO</title>
-<style>
-  body{margin:0;font-family:system-ui,Segoe UI,Arial;background:#05283a;color:#dbe7ee}
-  .wrap{max-width:1200px;margin:24px auto;padding:0 16px}
-  .card{background:#063247;border-radius:14px;padding:18px;box-shadow:0 10px 28px rgba(0,0,0,.25)}
-  h1{margin:0 0 6px 0;font-size:22px}
-  .sub{opacity:.85;font-size:12px;line-height:1.35}
-  .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0 14px}
-  .btn{border:1px solid rgba(255,255,255,.16);background:#0b3c55;color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:700}
-  .btn.on{background:#0f5d52}
-  .upd{font-size:12px;color:#ff9a2f;font-weight:800}
-  table{width:100%;border-collapse:collapse;font-size:12px}
-  th,td{padding:8px 8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;white-space:nowrap}
-  th{color:#ff9a2f;font-weight:900;font-size:11px;letter-spacing:.4px}
-  .long{color:#00d37a;font-weight:900}
-  .short{color:#ff3b5c;font-weight:900}
-  .pos{color:#00d37a;font-weight:900}
-  .neg{color:#ff3b5c;font-weight:900}
-  .zverde{color:#00d37a;font-weight:900}
-  .zamarela{color:#ffd34d;font-weight:900}
-  .zvermelha{color:#ff3b5c;font-weight:900}
-</style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AUTOTRADER-PRO</title>
+  <style>
+    :root{
+      --bg:#062d3b; --panel:#083243; --text:#e8f0f2; --muted:#9bb7c3;
+      --orange:#ff8a00; --green:#00e676; --red:#ff3355; --yellow:#ffcc00;
+      --bluebtn:#1aa3a3; --line: rgba(255,255,255,.08);
+    }
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;}
+    .wrap{max-width:1180px;margin:24px auto;padding:0 14px;}
+    .card{background:var(--panel);border-radius:14px;padding:18px 18px 14px;box-shadow:0 10px 30px rgba(0,0,0,.25);}
+    .top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;}
+    h1{margin:0;font-size:26px;}
+    .sub{margin-top:6px;color:var(--muted);font-size:12px;line-height:1.35;}
+    .right{display:flex;flex-direction:column;align-items:flex-end;gap:10px;}
+    .updated{color:var(--orange);font-weight:800;font-size:13px;}
+    .btns{display:flex;gap:10px;}
+    .btn{border:1px solid rgba(255,255,255,.18);background:transparent;color:var(--text);padding:8px 12px;border-radius:10px;font-weight:800;cursor:pointer}
+    .btn.primary{background:var(--bluebtn);border-color:transparent;}
+    table{width:100%;border-collapse:collapse;margin-top:14px;font-size:12px;}
+    th{color:var(--orange);text-align:left;padding:10px 8px;border-bottom:1px solid var(--line);}
+    td{padding:9px 8px;border-bottom:1px solid var(--line);white-space:nowrap;}
+    .side-long{color:var(--green);font-weight:900;}
+    .side-short{color:var(--red);font-weight:900;}
+    .gain-pos{color:var(--green);font-weight:900;}
+    .gain-neg{color:var(--red);font-weight:900;}
+    .zona-verde{color:var(--green);font-weight:900;}
+    .zona-amarela{color:var(--yellow);font-weight:900;}
+    .risco-baixo{color:var(--green);font-weight:900;}
+    .risco-medio{color:var(--yellow);font-weight:900;}
+    .prio-alta{color:var(--green);font-weight:900;}
+    .prio-media{color:var(--yellow);font-weight:900;}
+    .prio-baixa{color:var(--red);font-weight:900;}
+    .muted{color:var(--muted);}
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;">
-      <div>
-        <h1>AUTOTRADER-PRO</h1>
-        <div class="sub">
-          Painel único (PRO) — dados em <b>/api/pro</b><br/>
-          Metodologia (resumo): ranking por ASSERT% (com confiabilidade n), depois GANHO%. PRAZO = dias estimados até o ALVO.
+  <div class="wrap">
+    <div class="card">
+      <div class="top">
+        <div>
+          <h1>AUTOTRADER-PRO</h1>
+          <div class="sub">
+            Painel único (PRO) — dados em <b>/api/pro</b><br/>
+            Metodologia (resumo): ranking por ASSERT% (com confiabilidade n), depois GANHO%. PRAZO = dias estimados até o ALVO.
+          </div>
+          <div style="margin-top:10px">
+            <button class="btn primary" id="btnAtualizar">ATUALIZAR</button>
+          </div>
+        </div>
+        <div class="right">
+          <div class="updated" id="updated">Atualizado: —</div>
+          <div class="btns">
+            <button class="btn" onclick="location.href='top10.html'">TOP 10</button>
+            <button class="btn" onclick="location.href='audit.html'">AUDITORIA</button>
+          </div>
+          <div class="sub muted" id="metaLine">GAIN_MIN: — • Volatilidade BTC: —</div>
         </div>
       </div>
-      <div style="text-align:right">
-        <div class="upd" id="upd">Atualizado: —</div>
-        <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;">
-          <button class="btn" onclick="location.href='/top10.html'">TOP 10</button>
-          <button class="btn" onclick="location.href='/audit.html'">AUDITORIA</button>
-        </div>
-      </div>
-    </div>
 
-    <div class="topbar">
-      <button class="btn on" onclick="load()">ATUALIZAR</button>
-      <div class="sub" id="meta">—</div>
-    </div>
-
-    <div style="overflow:auto">
-      <table id="tb">
+      <table>
         <thead>
           <tr>
-            <th>PAR</th><th>SIDE</th><th>PREÇO</th><th>ALVO</th><th>GANHO %</th>
-            <th>ASSERT %</th><th>PRAZO</th><th>ZONA</th><th>RISCO</th><th>PRIORIDADE</th>
-            <th>DATA</th><th>HORA</th>
+            <th>PAR</th><th>SIDE</th><th>PREÇO</th><th>ALVO</th><th>GANHO %</th><th>ASSERT %</th><th>PRAZO</th>
+            <th>ZONA</th><th>RISCO</th><th>PRIORIDADE</th><th>DATA</th><th>HORA</th>
           </tr>
         </thead>
-        <tbody></tbody>
+        <tbody id="tbody">
+          <tr><td colspan="12" class="muted">Carregando…</td></tr>
+        </tbody>
       </table>
     </div>
   </div>
-</div>
 
 <script>
-const $ = (id)=>document.getElementById(id);
-const pick = (o, keys, d=null)=>{ for(const k of keys){ if(o && o[k]!=null && o[k]!=="" ) return o[k]; } return d; };
-const num = (v)=>{ const n=Number(String(v).replace(",",".")); return Number.isFinite(n)?n:null; };
-const fmt = (v, dec=4)=> (v==null? "—" : Number(v).toFixed(dec));
-const fmt2 = (v)=> (v==null? "—" : Number(v).toFixed(2));
-const clsZona = (z)=>{
-  z=String(z||"").toUpperCase();
-  if(z.includes("VERDE")) return "zverde";
-  if(z.includes("AMARE")) return "zamarela";
-  if(z.includes("VERM")) return "zvermelha";
+const fmtNum = (v, dec=4) => {
+  const n = Number(String(v).replace(",", "."));
+  if (!Number.isFinite(n)) return "0";
+  return n.toFixed(dec);
+};
+const fmtPct = (v) => {
+  const n = Number(String(v).replace(",", "."));
+  if (!Number.isFinite(n)) return "—";
+  return n.toFixed(2) + "%";
+};
+const clsSide = (s) => {
+  s = (s||"").toUpperCase();
+  if (s.includes("LONG")) return "side-long";
+  if (s.includes("SHORT")) return "side-short";
   return "";
 };
-const sideHtml = (s)=>{
-  s=String(s||"").toUpperCase();
-  if(s==="LONG") return `<span class="long">LONG</span>`;
-  if(s==="SHORT") return `<span class="short">SHORT</span>`;
-  return s||"—";
+const clsZona = (z) => {
+  z = (z||"").toUpperCase();
+  if (z.includes("VERDE")) return "zona-verde";
+  if (z.includes("AMARELA")) return "zona-amarela";
+  return "";
 };
-const ganhoHtml = (g)=>{
-  const n=num(g);
-  if(n==null) return "—";
-  const c = n>=0 ? "pos":"neg";
-  return `<span class="${c}">${fmt2(n)}%</span>`;
+const clsRisco = (r) => {
+  r = (r||"").toUpperCase();
+  if (r.includes("BAIXO")) return "risco-baixo";
+  if (r.includes("MÉDIO") || r.includes("MEDIO")) return "risco-medio";
+  return "";
 };
-const assertHtml = (a, n)=>{
-  const av=num(a); if(av==null) return "—";
-  const nn = num(n);
-  return nn==null ? `${fmt2(av)}%` : `${fmt2(av)}% (n=${Math.trunc(nn)})`;
-};
-const prazoHtml = (p)=>{
-  const n=num(p);
-  if(n==null) return "—";
-  // dias com 0 ou 1 casa dependendo
-  const d = n<10 ? n.toFixed(1) : Math.round(n).toString();
-  return `${d}d`;
+const clsPrio = (p) => {
+  p = (p||"").toUpperCase();
+  if (p.includes("ALTA")) return "prio-alta";
+  if (p.includes("MÉDIA") || p.includes("MEDIA")) return "prio-media";
+  if (p.includes("BAIXA")) return "prio-baixa";
+  return "";
 };
 
-async function load(){
-  const r = await fetch("/api/pro", {cache:"no-store", credentials:"same-origin"});
-  const j = await r.json();
+async function load() {
+  const tb = document.getElementById("tbody");
+  tb.innerHTML = `<tr><td colspan="12" class="muted">Carregando…</td></tr>`;
+  try{
+    const r = await fetch("/api/pro?ts=" + Date.now(), {cache:"no-store"});
+    const j = await r.json();
 
-  const sinais = pick(j, ["sinais","items","data"], []);
-  const ua = pick(j, ["ultima_atualizacao","ts_brt","ts"], null);
+    const up = (j && j.meta && j.meta.updated_brt) ? j.meta.updated_brt : "—";
+    document.getElementById("updated").textContent = "Atualizado: " + up;
 
-  $("upd").textContent = "Atualizado: " + (ua || new Date().toISOString().slice(0,16).replace("T"," "));
-  $("meta").textContent = `GAIN_MIN: ${pick(j,["regra_gain_min","gain_min"],"—")} • Volatilidade BTC: ${pick(j,["status_volatilidade","btc_vol"],"—")}`;
+    const items = (j && j.items) ? j.items : [];
+    if (!items.length){
+      tb.innerHTML = `<tr><td colspan="12" class="muted">Sem dados no momento.</td></tr>`;
+      return;
+    }
 
-  const tb = $("tb").querySelector("tbody");
-  tb.innerHTML = "";
-
-  for(const s of sinais){
-    const par = pick(s,["par","PAR"]);
-    const side = pick(s,["side","SIDE"]);
-    const preco = pick(s,["preco","preço","price"]);
-    const alvo  = pick(s,["alvo","target"]);
-    const ganho = pick(s,["ganho_pct","ganho","gain_pct"]);
-    const asrt  = pick(s,["assert_pct","assert","assert_percent"]);
-    const an    = pick(s,["assert_n","n","samples"]);
-    const prazo = pick(s,["prazo_dias","prazo","eta_dias","eta_days"]);
-    const zona  = pick(s,["zona"]);
-    const risco = pick(s,["risco"]);
-    const prio  = pick(s,["prioridade"]);
-    const data  = pick(s,["data"]);
-    const hora  = pick(s,["hora"]);
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${par||"—"}</td>
-      <td>${sideHtml(side)}</td>
-      <td>${fmt(num(preco), 4)}</td>
-      <td>${fmt(num(alvo), 4)}</td>
-      <td>${ganhoHtml(ganho)}</td>
-      <td>${assertHtml(asrt, an)}</td>
-      <td>${prazoHtml(prazo)}</td>
-      <td class="${clsZona(zona)}">${(zona||"—")}</td>
-      <td>${(risco||"—")}</td>
-      <td>${(prio||"—")}</td>
-      <td>${(data||"—")}</td>
-      <td>${(hora||"—")}</td>
-    `;
-    tb.appendChild(tr);
+    tb.innerHTML = items.map(it => {
+      const side = (it.side||"").toUpperCase();
+      const ganho = Number(String(it.ganho ?? it.ganho_pct ?? it.ganho_percent ?? it.ganhoPerc ?? "").replace(",", "."));
+      const assertv = it.assert ?? it.assert_pct ?? it.assert_percent ?? it.assertPerc;
+      return `<tr>
+        <td>${it.par ?? it.pair ?? "—"}</td>
+        <td class="${clsSide(side)}">${side || "—"}</td>
+        <td>${fmtNum(it.preco ?? it.price ?? it.px ?? 0, 4)}</td>
+        <td>${fmtNum(it.alvo ?? it.target ?? it.tp ?? 0, 4)}</td>
+        <td class="${Number.isFinite(ganho) && ganho >= 0 ? "gain-pos":"gain-neg"}">${fmtPct(ganho)}</td>
+        <td class="gain-pos">${fmtPct(assertv)}</td>
+        <td>${it.prazo ?? "—"}</td>
+        <td class="${clsZona(it.zona)}">${it.zona ?? "—"}</td>
+        <td class="${clsRisco(it.risco)}">${it.risco ?? "—"}</td>
+        <td class="${clsPrio(it.prioridade)}">${it.prioridade ?? "—"}</td>
+        <td>${it.data ?? "—"}</td>
+        <td>${it.hora ?? "—"}</td>
+      </tr>`;
+    }).join("");
+  }catch(e){
+    tb.innerHTML = `<tr><td colspan="12" class="muted">Erro ao carregar. Atualize a página.</td></tr>`;
   }
 }
-
+document.getElementById("btnAtualizar").addEventListener("click", load);
 load();
-setInterval(load, 60000);
 </script>
 </body>
 </html>

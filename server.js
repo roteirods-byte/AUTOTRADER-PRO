@@ -1,7 +1,9 @@
 /**
- * AUTOTRADER-PRO - server.js (replacement)
- * FIX V1: PRAZO + DATA/HORA corretos (BRT) para PRO e TOP10.
+ * AUTOTRADER-PRO - server.js (FIX DEFINITIVO V2)
+ * - Corrige DATA/HORA (BRT) e PRAZO (quando existir em qualquer chave conhecida)
+ * - /api/top10 pode ser derivado do PRO se top10.json estiver ausente/inválido
  */
+"use strict";
 
 const fs = require("fs");
 const path = require("path");
@@ -11,239 +13,200 @@ const app = express();
 
 const PORT = Number(process.env.PORT || 8095);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
-const DIST_DIR = process.env.DIST_DIR || path.join(__dirname, "dist");
-const GAIN_MIN = Number(process.env.GAIN_MIN || 3);
+const TZ = "America/Sao_Paulo";
 
-function readJsonSafe(filePath, fallback) {
+function readJsonSafe(filePath) {
   try {
-    if (!fs.existsSync(filePath)) return fallback;
+    if (!fs.existsSync(filePath)) return null;
     const raw = fs.readFileSync(filePath, "utf8");
+    if (!raw || !raw.trim()) return null;
     return JSON.parse(raw);
   } catch (e) {
-    return fallback;
+    return { __error: String(e && e.message ? e.message : e) };
   }
 }
 
-// BRT: "YYYY-MM-DD HH:MM"
-function nowBrtString() {
-  try {
-    const dtf = new Intl.DateTimeFormat("sv-SE", {
-      timeZone: "America/Sao_Paulo",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-    return dtf.format(new Date());
-  } catch (e) {
-    const d = new Date();
-    const pad = (n) => String(n).padStart(2, "0");
-    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
-  }
+function formatBRTFromDate(d) {
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  }).formatToParts(d);
+  const get = (t) => (parts.find(p => p.type === t) || {}).value || "";
+  return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}:${get("second")}`;
 }
 
-function splitUpdatedBrt(s) {
-  try {
-    s = String(s || "").trim();
-    const m = s.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})/);
-    if (!m) return null;
-    return { data: m[1], hora: m[2] };
-  } catch (e) {
-    return null;
-  }
+function parseUpdatedBrt(v) {
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(:\d{2})?$/);
+  if (!m) return null;
+  return { date: m[1], time: m[2] };
 }
 
-function normalizePrazo(value) {
-  try {
-    if (value === null || value === undefined) return "—";
-    if (typeof value === "number" && Number.isFinite(value)) return `${value.toFixed(1)}d`;
-
-    const s = String(value).trim();
-    if (!s || s === "—" || s === "-") return "—";
-
-    const md = s.match(/^([0-9]+(?:\.[0-9]+)?)\s*d/i);
-    if (md) return `${Number(md[1]).toFixed(1)}d`;
-
-    const mh = s.match(/^([0-9]+(?:\.[0-9]+)?)\s*h/i);
-    if (mh) return `${(Number(mh[1]) / 24).toFixed(1)}d`;
-
-    const mm = s.match(/^([0-9]+(?:\.[0-9]+)?)\s*m/i);
-    if (mm) return `${(Number(mm[1]) / 1440).toFixed(1)}d`;
-
-    return s;
-  } catch (e) {
-    return "—";
+function coerceNumber(x) {
+  if (x === null || x === undefined) return null;
+  if (typeof x === "number" && Number.isFinite(x)) return x;
+  if (typeof x === "string") {
+    const s = x.trim().replace(",", ".");
+    if (!s) return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
   }
+  return null;
 }
 
-function prazoFromRow(row) {
-  if (!row || typeof row !== "object") return "—";
-  const keys = [
-    "prazo", "PRAZO",
-    "prazo_dias", "prazoDias", "prazo_d",
-    "prazo_txt", "prazoTxt",
-    "eta", "ETA",
-    "eta_horas", "etaHoras",
-    "eta_min", "etaMin"
-  ];
+function formatPrazoDays(days) {
+  const d = coerceNumber(days);
+  if (d === null) return null;
+  return `${d.toFixed(1)}d`;
+}
+
+function pickFirst(obj, keys) {
   for (const k of keys) {
-    const v = row[k];
-    if (v === undefined || v === null) continue;
-    if (String(v).trim() === "") continue;
-
-    if (k === "ETA" || k === "eta" || k === "eta_horas" || k === "etaHoras") {
-      const n = Number(v);
-      if (Number.isFinite(n)) return normalizePrazo(n / 24);
-    }
-    if (k === "eta_min" || k === "etaMin") {
-      const n = Number(v);
-      if (Number.isFinite(n)) return normalizePrazo(n / 1440);
-    }
-    return normalizePrazo(v);
-  }
-  return "—";
-}
-
-function rowsFromPayload(payload) {
-  if (Array.isArray(payload)) return payload;
-  if (payload && typeof payload === "object") {
-    for (const k of ["rows", "data", "items", "result", "pro", "list"]) {
-      if (Array.isArray(payload[k])) return payload[k];
-    }
-    for (const k of Object.keys(payload)) {
-      const v = payload[k];
-      if (Array.isArray(v) && v.length && typeof v[0] === "object") return v;
+    if (obj && Object.prototype.hasOwnProperty.call(obj, k) && obj[k] !== null && obj[k] !== undefined && obj[k] !== "") {
+      return obj[k];
     }
   }
-  return [];
+  return null;
 }
 
-function normalizeRows(rows, updated_brt) {
-  const dhr = splitUpdatedBrt(updated_brt);
-  if (!Array.isArray(rows)) return rows;
+function normalizeRow(r) {
+  const row = Object.assign({}, r || {});
 
-  for (const r of rows) {
-    if (!r || typeof r !== "object") continue;
+  // DATA/HORA
+  const updatedRaw = pickFirst(row, [
+    "updated_brt","updatedBrt","updated_brt_str","updated_at_brt",
+    "updated_at","updatedAt","ts_brt","timestamp_brt","time_brt"
+  ]);
+  let parsed = parseUpdatedBrt(updatedRaw);
 
-    const p = prazoFromRow(r);
-    r.prazo = p;
-    r.PRAZO = p;
-
-    if (dhr) {
-      r.data = dhr.data; r.DATA = dhr.data;
-      r.hora = dhr.hora; r.HORA = dhr.hora;
-    }
-  }
-  return rows;
-}
-
-function buildApiPro() {
-  const file = path.join(DATA_DIR, "pro.json");
-  const payload = readJsonSafe(file, null);
-
-  let updated_brt = nowBrtString();
-  let extra = {};
-
-  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
-    updated_brt = payload.updated_brt || payload.updatedBrt || payload.updated || payload.ts_brt || payload.time_brt || updated_brt;
-
-    for (const k of ["gain_min", "GAIN_MIN", "vol_btc", "volatilidade_btc", "btc_volatility", "btc_vol"]) {
-      if (payload[k] !== undefined) extra[k] = payload[k];
+  if (!parsed && typeof updatedRaw === "string") {
+    const d = new Date(updatedRaw.trim());
+    if (!Number.isNaN(d.getTime())) {
+      const brt = formatBRTFromDate(d);
+      parsed = parseUpdatedBrt(brt);
+      row.updated_brt = brt.slice(0, 16);
     }
   }
 
-  const rows = normalizeRows(rowsFromPayload(payload || []), updated_brt);
-
-  return {
-    ok: true,
-    updated_brt,
-    gain_min: (extra.gain_min ?? extra.GAIN_MIN ?? GAIN_MIN),
-    ...extra,
-    rows
-  };
-}
-
-function parsePctNumber(v) {
-  if (v === null || v === undefined) return NaN;
-  if (typeof v === "number") return v;
-  const s = String(v).replace("%", "").trim();
-  const n = Number(s);
-  return Number.isFinite(n) ? n : NaN;
-}
-function parseGainNumber(v) { return parsePctNumber(v); }
-
-function buildApiTop10() {
-  const file = path.join(DATA_DIR, "top10.json");
-  const payload = readJsonSafe(file, null);
-
-  if (payload) {
-    let updated_brt = nowBrtString();
-    if (payload && typeof payload === "object" && !Array.isArray(payload)) {
-      updated_brt = payload.updated_brt || payload.updatedBrt || payload.updated || payload.ts_brt || payload.time_brt || updated_brt;
+  if (!parsed) {
+    const d = pickFirst(row, ["data","date","dt"]);
+    const h = pickFirst(row, ["hora","time","hm"]);
+    if (typeof d === "string" && typeof h === "string") {
+      parsed = { date: d.trim(), time: h.trim().slice(0,5) };
+      row.updated_brt = `${parsed.date} ${parsed.time}`;
     }
-    const rows = normalizeRows(rowsFromPayload(payload), updated_brt);
-    return { ok: true, updated_brt, gain_min: GAIN_MIN, rows };
   }
 
-  const pro = buildApiPro();
-  const rows = Array.isArray(pro.rows) ? pro.rows.slice() : [];
+  if (!parsed) {
+    const brt = formatBRTFromDate(new Date());
+    parsed = parseUpdatedBrt(brt);
+    row.updated_brt = brt.slice(0, 16);
+  }
 
-  const filtered = rows.filter(r => {
-    const g = parseGainNumber(r.ganho ?? r.GANHO ?? r.ganho_pct ?? r.ganhoPct ?? r.ganho_percent ?? r.ganhoPercent);
-    if (!Number.isFinite(g)) return true;
-    return g >= GAIN_MIN;
-  });
+  row.data = parsed.date;
+  row.hora = parsed.time;
 
-  filtered.sort((a,b) => {
-    const aa = parsePctNumber(a.assert ?? a.ASSERT ?? a.assert_pct ?? a.assertPct ?? a.assert_percent ?? a.assertPercent);
-    const bb = parsePctNumber(b.assert ?? b.ASSERT ?? b.assert_pct ?? b.assertPct ?? b.assert_percent ?? b.assertPercent);
-    if (Number.isFinite(bb) && Number.isFinite(aa) && bb !== aa) return bb - aa;
+  // PRAZO
+  const prazoTxt = pickFirst(row, ["prazo_txt","prazoTxt","prazo","prazo_str","prazoStr"]);
+  if (typeof prazoTxt === "string" && prazoTxt.trim() && prazoTxt.trim() !== "—" && prazoTxt.trim() !== "-") {
+    row.prazo = prazoTxt.trim();
+  } else {
+    const prazoDias = pickFirst(row, ["prazo_dias","prazoDias","prazo_d","eta_dias","etaDias"]);
+    const p1 = formatPrazoDays(prazoDias);
+    if (p1) row.prazo = p1;
+    else {
+      const prazoHoras = pickFirst(row, ["prazo_horas","prazoHoras","eta_horas","etaHoras","eta_hours","etaHours"]);
+      const h = coerceNumber(prazoHoras);
+      if (h !== null) row.prazo = formatPrazoDays(h / 24);
+    }
+  }
+  if (!row.prazo) row.prazo = "—";
 
-    const ga = parseGainNumber(a.ganho ?? a.GANHO ?? a.ganho_pct ?? a.ganhoPct ?? a.ganho_percent ?? a.ganhoPercent);
-    const gb = parseGainNumber(b.ganho ?? b.GANHO ?? b.ganho_pct ?? b.ganhoPct ?? b.ganho_percent ?? b.ganhoPercent);
-    if (Number.isFinite(gb) && Number.isFinite(ga) && gb !== ga) return gb - ga;
+  // SIDE
+  if (row.side) {
+    const s = String(row.side).toUpperCase().trim();
+    row.side = (s === "LONG" || s === "SHORT" || s === "NÃO ENTRAR" || s === "NAO ENTRAR") ? s.replace("NAO","NÃO") : s;
+  }
 
-    return 0;
-  });
-
-  const top10 = filtered.slice(0, 10);
-  normalizeRows(top10, pro.updated_brt);
-
-  return { ok: true, updated_brt: pro.updated_brt, gain_min: GAIN_MIN, rows: top10 };
+  return row;
 }
 
-// STATIC (sem cache)
-app.use((req,res,next) => { res.setHeader("Cache-Control", "no-store"); next(); });
-app.use(express.static(DIST_DIR, { etag:false, lastModified:false }));
+function normalizePayload(payload) {
+  let items = null;
+  if (Array.isArray(payload)) items = payload;
+  else if (payload && typeof payload === "object") items = payload.items || payload.rows || payload.data || payload.result || null;
+  if (!Array.isArray(items)) items = [];
 
-app.get("/health", (req,res) => {
-  res.json({ ok:true, service:"autotrader-pro", ts:new Date().toISOString(), version:"github" });
+  const norm = items.map(normalizeRow);
+
+  let max = null;
+  for (const r of norm) {
+    const u = typeof r.updated_brt === "string" ? r.updated_brt.slice(0,16) : null;
+    if (!u) continue;
+    if (!max || u > max) max = u;
+  }
+  if (!max) max = formatBRTFromDate(new Date()).slice(0,16);
+
+  return { items: norm, meta: { updated_brt: max, count: norm.length } };
+}
+
+function chooseFile(candidates) {
+  for (const f of candidates) {
+    const fp = path.join(DATA_DIR, f);
+    if (fs.existsSync(fp)) return fp;
+  }
+  return null;
+}
+
+app.get("/api/pro", (req, res) => {
+  const fp = chooseFile(["pro.json","pro_latest.json","pro_data.json","pro_snapshot.json"]);
+  const raw = fp ? readJsonSafe(fp) : null;
+  if (raw && raw.__error) return res.status(500).json({ ok:false, error: raw.__error, file: fp || null });
+  const out = normalizePayload(raw);
+  return res.json({ ok:true, source_file: fp ? path.basename(fp) : null, ...out });
 });
 
-app.get("/api/pro", (req,res) => { res.json(buildApiPro()); });
-app.get("/api/top10", (req,res) => { res.json(buildApiTop10()); });
+app.get("/api/top10", (req, res) => {
+  const fp = chooseFile(["top10.json","top10_latest.json","top10_data.json","top10_snapshot.json"]);
+  const raw = fp ? readJsonSafe(fp) : null;
 
-app.get("/api/audit", (req,res) => {
-  const file = path.join(DATA_DIR, "audit.json");
-  const payload = readJsonSafe(file, { ok:true, updated_brt: nowBrtString(), rows: [] });
-  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
-    payload.ok = true;
-    payload.updated_brt = payload.updated_brt || nowBrtString();
-    const rows = normalizeRows(rowsFromPayload(payload), payload.updated_brt);
-    res.json({ ...payload, rows });
-    return;
+  let out;
+  if (raw && !raw.__error) {
+    out = normalizePayload(raw);
+  } else {
+    const proFp = chooseFile(["pro.json","pro_latest.json","pro_data.json","pro_snapshot.json"]);
+    const proRaw = proFp ? readJsonSafe(proFp) : null;
+    const proOut = normalizePayload(proRaw);
+
+    const scored = proOut.items.slice().sort((a,b)=>{
+      const aa = coerceNumber(a.assert || a.assert_pct || a.assert_percent) ?? 0;
+      const bb = coerceNumber(b.assert || b.assert_pct || b.assert_percent) ?? 0;
+      if (bb !== aa) return bb - aa;
+      const ag = coerceNumber(a.ganho || a.ganho_pct || a.ganho_percent) ?? 0;
+      const bg = coerceNumber(b.ganho || b.ganho_pct || b.ganho_percent) ?? 0;
+      return bg - ag;
+    });
+
+    out = { items: scored.slice(0,10), meta: { updated_brt: proOut.meta.updated_brt, count: Math.min(10, scored.length) } };
   }
-  res.json({ ok:true, updated_brt: nowBrtString(), rows: rowsFromPayload(payload) });
+
+  return res.json({ ok:true, source_file: fp ? path.basename(fp) : null, ...out });
 });
 
-app.get("/", (req,res) => {
-  const full = path.join(DIST_DIR, "full.html");
-  if (fs.existsSync(full)) return res.sendFile(full);
-  res.status(200).send("AUTOTRADER-PRO");
+app.get("/api/audit", (req, res) => {
+  const fp = chooseFile(["audit.json","audit_latest.json","audit_data.json"]);
+  const raw = fp ? readJsonSafe(fp) : null;
+  if (raw && raw.__error) return res.status(500).json({ ok:false, error: raw.__error, file: fp || null });
+  if (!raw) return res.json({ ok:true, meta:{ updated_brt: formatBRTFromDate(new Date()).slice(0,16) }, items: [] });
+  return res.json(raw);
 });
 
 app.listen(PORT, () => {
-  console.log(`[AUTOTRADER-PRO] API on :${PORT} | DATA_DIR=${DATA_DIR} | DIST_DIR=${DIST_DIR} | GAIN_MIN=${GAIN_MIN}`);
+  console.log(`[AUTOTRADER-PRO] API on :${PORT} | DATA_DIR=${DATA_DIR}`);
 });
