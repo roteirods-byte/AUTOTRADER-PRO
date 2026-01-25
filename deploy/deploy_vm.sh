@@ -1,42 +1,129 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="${APP_DIR:-/home/roteiro_ds/AUTOTRADER-PRO}"
-SERVICE_APP="${SERVICE_APP:-autotrader-pro.service}"
-SERVICE_WORKER="${SERVICE_WORKER:-autotrader-pro-worker.service}"
-TIMER_WORKER="${TIMER_WORKER:-autotrader-pro-worker.timer}"
+# =========================
+# AUTOTRADER-PRO | Deploy VM (GitHub-linked)
+# Objetivo: atualizar código + site público + reiniciar serviços + validar
+# =========================
 
-echo "== DEPLOY: ${APP_DIR} =="
+APP_DIR="${APP_DIR:-/home/roteiro_ds/AUTOTRADER-PRO}"
+BRANCH="${BRANCH:-main}"
+
+# Onde o Nginx serve o HTML público (se existir)
+PUBLIC_DIR="${PUBLIC_DIR:-/var/www/paineljorge}"
+
+# URL local do backend (usado na validação)
+BASE_URL="${BASE_URL:-http://127.0.0.1:8095}"
+
+TS="$(date +%Y%m%d_%H%M%S)"
+
+echo "== DEPLOY AUTOTRADER-PRO =="
+echo "APP_DIR:     ${APP_DIR}"
+echo "BRANCH:      ${BRANCH}"
+echo "PUBLIC_DIR:  ${PUBLIC_DIR}"
+echo "BASE_URL:    ${BASE_URL}"
+echo "TS:          ${TS}"
+echo
+
 cd "${APP_DIR}"
 
-ts="$(date +%Y%m%d_%H%M%S)"
-mkdir -p "_bkp/${ts}"
-cp -a "server.js" "_bkp/${ts}/server.js" || true
-cp -a "dist/full.html" "_bkp/${ts}/full.html" || true
-cp -a "dist/top10.html" "_bkp/${ts}/top10.html" || true
-cp -a "dist/audit.html" "_bkp/${ts}/audit.html" || true
-echo "Backup OK: _bkp/${ts}"
+# 1) Atualizar código da VM para ficar IGUAL ao GitHub
+echo "== GIT PULL (ff-only) =="
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "ERRO: ${APP_DIR} nao é um repo git"; exit 1; }
 
-echo "Restart services..."
-sudo systemctl restart "${SERVICE_APP}"
-sudo systemctl restart "${SERVICE_WORKER}" || true
-sudo systemctl restart "${TIMER_WORKER}" || true
+git fetch origin "${BRANCH}" --prune
+git checkout "${BRANCH}"
+git pull --ff-only origin "${BRANCH}"
+echo
 
-echo "== SELF-AUDIT (falha se PRAZO continuar vazio) =="
-node - <<'NODE'
-const http = require("http");
-function get(p){return new Promise((res,rej)=>{http.get({host:"127.0.0.1",port:8095,path:p},r=>{let d="";r.on("data",c=>d+=c);r.on("end",()=>{try{res(JSON.parse(d))}catch(e){rej(e)}})}).on("error",rej);});}
-(async()=>{
-  const pro = await get("/api/pro?ts="+Date.now());
-  const top = await get("/api/top10?ts="+Date.now());
-  const okPro = !!(pro && pro.ok && pro.meta && pro.meta.updated_brt);
-  const okTop = !!(top && top.ok && top.meta && top.meta.updated_brt);
-  const hasPrazo = (pro.items||[]).some(x => x && x.prazo && x.prazo !== "—");
-  console.log("PRO:", okPro ? pro.meta.updated_brt : "FAIL", "PRAZO:", hasPrazo);
-  console.log("TOP10:", okTop ? top.meta.updated_brt : "FAIL");
-  if (!okPro || !okTop) process.exit(2);
-  if (!hasPrazo) process.exit(3);
-  process.exit(0);
-})().catch(e=>{console.error("AUDIT FAIL:", e && e.message ? e.message : e); process.exit(4);});
-NODE
-echo "DEPLOY OK"
+# 2) Dependências do Node
+echo "== NPM INSTALL =="
+if [ -f package-lock.json ]; then
+  npm ci --omit=dev
+else
+  npm install --omit=dev
+fi
+echo
+
+# 3) Backup rápido dos HTML do repo (dist)
+echo "== BACKUP dist/*.html (repo) =="
+if [ -d "${APP_DIR}/dist" ]; then
+  mkdir -p "${APP_DIR}/dist_bkp_${TS}"
+  cp -a "${APP_DIR}/dist/"*.html "${APP_DIR}/dist_bkp_${TS}/" 2>/dev/null || true
+  cp -a "${APP_DIR}/dist/favicon.ico" "${APP_DIR}/dist_bkp_${TS}/" 2>/dev/null || true
+  echo "OK: ${APP_DIR}/dist_bkp_${TS}"
+else
+  echo "AVISO: dist/ nao existe no repo (ok se seu Nginx aponta para outro local)."
+fi
+echo
+
+# 4) Atualizar HTML público (se o diretório existir)
+echo "== SYNC HTML PUBLICO (Nginx) =="
+if [ -d "${PUBLIC_DIR}" ] && [ -d "${APP_DIR}/dist" ]; then
+  sudo mkdir -p "${PUBLIC_DIR}/bkp_${TS}"
+  sudo cp -a "${PUBLIC_DIR}/"*.html "${PUBLIC_DIR}/bkp_${TS}/" 2>/dev/null || true
+  sudo cp -a "${PUBLIC_DIR}/favicon.ico" "${PUBLIC_DIR}/bkp_${TS}/" 2>/dev/null || true
+  sudo cp -a "${APP_DIR}/dist/"*.html "${PUBLIC_DIR}/"
+  sudo cp -a "${APP_DIR}/dist/favicon.ico" "${PUBLIC_DIR}/" 2>/dev/null || true
+  echo "OK: HTML publico atualizado em ${PUBLIC_DIR}"
+else
+  echo "AVISO: nao consegui sincronizar HTML publico."
+  echo " - dist/ existe?  $( [ -d "${APP_DIR}/dist" ] && echo SIM || echo NAO )"
+  echo " - PUBLIC_DIR existe? $( [ -d "${PUBLIC_DIR}" ] && echo SIM || echo NAO )"
+fi
+echo
+
+# 5) Reiniciar serviços (API + WORKER + AUDIT)
+echo "== RESTART SERVICES =="
+sudo systemctl restart autotrader-pro.service || true
+sudo systemctl restart autotrader-pro-worker.service 2>/dev/null || true
+sudo systemctl restart autotrader-pro-worker.timer  2>/dev/null || true
+sudo systemctl restart autotrader-pro-audit.service 2>/dev/null || true
+sudo systemctl restart autotrader-pro-audit.timer   2>/dev/null || true
+echo "OK: restart disparado"
+echo
+
+# 6) Validação (sem detalhes técnicos)
+echo "== VALIDACAO AUTOMATICA (curta) =="
+sleep 3
+
+# 6.1) API respondendo?
+curl -fsS "${BASE_URL}/api/health" >/dev/null 2>&1 || { echo "ERRO: API nao respondeu /api/health"; exit 1; }
+echo "OK: /api/health"
+
+# 6.2) PRO tem PRAZO preenchido?
+python3 - <<'PY'
+import json, sys, urllib.request
+import os
+base=os.environ.get("BASE_URL","http://127.0.0.1:8095")
+with urllib.request.urlopen(base+"/api/pro") as r:
+    d=json.loads(r.read().decode("utf-8","replace"))
+rows=d.get("rows") or []
+if not rows:
+    print("ERRO: /api/pro sem rows"); sys.exit(1)
+bad=[x for x in rows if str(x.get("prazo","")).strip() in ("", "-", "—", "None")]
+# exigencia: pelo menos 80% com prazo (para nao travar se 1-2 vierem sem)
+if len(bad) > max(2, int(len(rows)*0.2)):
+    print(f"ERRO: PRAZO vazio em {len(bad)}/{len(rows)} linhas"); sys.exit(1)
+print("OK: PRAZO preenchido (>=80%)")
+PY
+
+# 6.3) TOP10 tem PRAZO preenchido?
+python3 - <<'PY'
+import json, sys, urllib.request
+import os
+base=os.environ.get("BASE_URL","http://127.0.0.1:8095")
+with urllib.request.urlopen(base+"/api/top10") as r:
+    d=json.loads(r.read().decode("utf-8","replace"))
+rows=d.get("rows") or []
+if not rows:
+    print("ERRO: /api/top10 sem rows"); sys.exit(1)
+bad=[x for x in rows if str(x.get("prazo","")).strip() in ("", "-", "—", "None")]
+if len(bad) > max(1, int(len(rows)*0.2)):
+    print(f"ERRO: PRAZO vazio em {len(bad)}/{len(rows)} linhas"); sys.exit(1)
+print("OK: PRAZO preenchido no TOP10 (>=80%)")
+PY
+
+echo "OK: VALIDACAO PASSOU"
+echo
+echo "FIM: deploy concluido."
