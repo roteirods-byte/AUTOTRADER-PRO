@@ -1,0 +1,18 @@
+*** a/snapshot_top10.py
+--- b/snapshot_top10.py
+***************
+*** 1,10 ****
+--- 1,30 ----
++ # PATCH V1 (TOP10 copia do PRO)
++ # Dentro do loop que monta cada linha do TOP10, copie campos de tempo e prazo do PRO:
++ 
++ def _copy_fields(src_row, dst_row):
++     for k in ("prazo","prazo_dias","prazoDias","data","hora","data_brt","hora_brt"):
++         if k in src_row and k not in dst_row:
++             dst_row[k] = src_row[k]
++     return dst_row
++ 
++ # Exemplo de uso:
++ # dst = {...}
++ # dst = _copy_fields(src, dst)
+*** End Patch

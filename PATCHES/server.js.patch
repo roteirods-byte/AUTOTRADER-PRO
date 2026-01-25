@@ -1,0 +1,51 @@
+*** a/server.js
+--- b/server.js
+***************
+*** 1,5 ****
+--- 1,63 ----
++ // PATCH V1 (PRAZO + DATA/HORA BRT) — AUTOTRADER-PRO
++ // Inserir estas funcoes no server.js e chamar enrichRows() antes de responder em /api/pro e /api/top10.
++ 
++ function nowBrtParts(){
++   // BRT fixo (-03:00) sem depender do timezone do servidor
++   const d = new Date(Date.now() - 3*60*60*1000);
++   const iso = d.toISOString().replace('T',' ').slice(0,19);
++   const [date, time] = iso.split(' ');
++   return { updated_brt: iso, data_brt: date, hora_brt: time.slice(0,5) };
++ }
++ 
++ function pickNum(obj, keys){
++   for(const k of keys){
++     if(obj && obj[k] !== undefined && obj[k] !== null && obj[k] !== ""){
++       const v = Number(obj[k]);
++       if(!Number.isNaN(v)) return v;
++     }
++   }
++   return null;
++ }
++ 
++ function enrichRows(rows){
++   const t = nowBrtParts();
++   return (rows||[]).map(r=>{
++     const out = { ...r };
++ 
++     // PRAZO: normalizar para "Xd" (1 casa)
++     const dias = pickNum(out, ["prazo_dias","prazoDias","prazo_d","prazo_days","prazoDay","prazoDiasCalc"]);
++     if((out.prazo === undefined || out.prazo === null || out.prazo === "" || out.prazo === "—") && dias !== null){
++       out.prazo = `${dias.toFixed(1)}d`;
++     }
++ 
++     // DATA/HORA: se vier vazio, completar em BRT
++     if(!out.data) out.data = t.data_brt;
++     if(!out.hora) out.hora = t.hora_brt;
++     out.data_brt = out.data;
++     out.hora_brt = out.hora;
++     return out;
++   });
++ }
++ 
++ // Uso recomendado:
++ // const t = nowBrtParts();
++ // rows = enrichRows(rows);
++ // res.json({ ok:true, updated_brt: t.updated_brt, rows });
+*** End Patch
