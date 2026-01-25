@@ -1,197 +1,158 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-  <title>AUTOTRADER-PRO</title>
-  <style>
-    /* PRO_PANEL_V2 */
-    :root{
-      --bg:#061b2b;
-      --card:#0a2a3f;
-      --line:#123a52;
-      --text:#e8f1ff;
-      --muted:#9fb4c7;
-      --orange:#ff8c1a;
-      --green:#00e676;
-      --red:#ff1744;
-      --yellow:#ffd54f;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
-    .wrap{max-width:1200px;margin:28px auto;padding:0 18px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 16px 10px}
-    .top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
-    .title{font-size:20px;font-weight:800;letter-spacing:.5px}
-    .sub{font-size:12px;color:var(--muted);margin-top:2px}
-    .updated{font-size:12px;color:var(--orange);font-weight:800;margin-top:6px}
-    table{width:100%;border-collapse:collapse;margin-top:10px}
-    th{color:var(--orange);font-size:12px;text-align:left;padding:10px 10px;border-bottom:1px solid var(--line)}
-    td{padding:10px 10px;border-bottom:1px solid rgba(18,58,82,.55);font-size:13px}
-    .muted{color:var(--muted)}
-    .sideLong{color:var(--green);font-weight:800}
-    .sideShort{color:var(--red);font-weight:800}
-    .sideNe{color:#ffffff;font-weight:800}
-    .gainOk{color:var(--green);font-weight:900}
-    .gainBad{color:var(--red);font-weight:900}
-    .assertOk{color:var(--green);font-weight:900}
-    .assertBad{color:var(--red);font-weight:900}
-    .zonaVerde{color:var(--green);font-weight:800}
-    .zonaAmarela{color:var(--yellow);font-weight:800}
-    .zonaVermelha{color:var(--red);font-weight:800}
-    .riscoBaixo{color:var(--green);font-weight:800}
-    .riscoMedio{color:var(--yellow);font-weight:800}
-    .riscoAlto{color:var(--red);font-weight:800}
-    .prioAlta{color:var(--red);font-weight:900}
-    .prioMedia{color:var(--orange);font-weight:900}
-    .prioBaixa{color:var(--green);font-weight:900}
-  .btnLink{display:inline-block;padding:6px 10px;border:1px solid rgba(18,58,82,.7);border-radius:10px;color:#8bd3ff;text-decoration:none;font-weight:800;font-size:12px}.btnLink:hover{opacity:.85}.rightBox{display:flex;gap:10px;align-items:center}
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AUTOTRADER-PRO</title>
+<style>
+  body{margin:0;font-family:system-ui,Segoe UI,Arial;background:#05283a;color:#dbe7ee}
+  .wrap{max-width:1200px;margin:24px auto;padding:0 16px}
+  .card{background:#063247;border-radius:14px;padding:18px;box-shadow:0 10px 28px rgba(0,0,0,.25)}
+  h1{margin:0 0 6px 0;font-size:22px}
+  .sub{opacity:.85;font-size:12px;line-height:1.35}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0 14px}
+  .btn{border:1px solid rgba(255,255,255,.16);background:#0b3c55;color:#fff;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:700}
+  .btn.on{background:#0f5d52}
+  .upd{font-size:12px;color:#ff9a2f;font-weight:800}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{padding:8px 8px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left;white-space:nowrap}
+  th{color:#ff9a2f;font-weight:900;font-size:11px;letter-spacing:.4px}
+  .long{color:#00d37a;font-weight:900}
+  .short{color:#ff3b5c;font-weight:900}
+  .pos{color:#00d37a;font-weight:900}
+  .neg{color:#ff3b5c;font-weight:900}
+  .zverde{color:#00d37a;font-weight:900}
+  .zamarela{color:#ffd34d;font-weight:900}
+  .zvermelha{color:#ff3b5c;font-weight:900}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <div class="top">
-        <div>
-          <div class="title">AUTOTRADER-PRO</div>
-          <div class="sub">Painel único (PRO) • dados em <b>/api/pro</b><br><span class="muted">Metodologia (resumo); filtro é só GANHO%≥3 (senão: NÃO ENTRAR). ASSERT não filtra: <65% vermelho, ≥65% verde. Ranking por ASSERT% ↓, depois GANHO% ↓. ETA = tempo estimado até o ALVO. ZONA = zona do sinal (ex.: AMARELA). RISCO = nível (BAIXO/MÉDIO/ALTO). PRIORIDADE = urgência (BAIXA/MÉDIA/ALTA).</span></div>
+<div class="wrap">
+  <div class="card">
+    <div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between;">
+      <div>
+        <h1>AUTOTRADER-PRO</h1>
+        <div class="sub">
+          Painel único (PRO) — dados em <b>/api/pro</b><br/>
+          Metodologia (resumo): ranking por ASSERT% (com confiabilidade n), depois GANHO%. PRAZO = dias estimados até o ALVO.
         </div>
-        <div class="rightBox"><a class="btnLink" href="/top10.html">TOP 10</a><a class="btnLink" href="/audit.html">AUDITORIA</a><div id="updated" class="updated">Atualizado: --</div></div>
       </div>
+      <div style="text-align:right">
+        <div class="upd" id="upd">Atualizado: —</div>
+        <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn" onclick="location.href='/top10.html'">TOP 10</button>
+          <button class="btn" onclick="location.href='/audit.html'">AUDITORIA</button>
+        </div>
+      </div>
+    </div>
 
-      <table>
+    <div class="topbar">
+      <button class="btn on" onclick="load()">ATUALIZAR</button>
+      <div class="sub" id="meta">—</div>
+    </div>
+
+    <div style="overflow:auto">
+      <table id="tb">
         <thead>
           <tr>
-            <th>PAR</th>
-            <th>SIDE</th>
-            <th>PREÇO</th>
-            <th>ALVO</th>
-            <th>GANHO %</th>
-            <th>ASSERT %</th>
-            <th>ETA</th>
-            <th>ZONA</th>
-            <th>RISCO</th>
-            <th>PRIORIDADE</th>
-            <th>DATA</th>
-            <th>HORA</th>
+            <th>PAR</th><th>SIDE</th><th>PREÇO</th><th>ALVO</th><th>GANHO %</th>
+            <th>ASSERT %</th><th>PRAZO</th><th>ZONA</th><th>RISCO</th><th>PRIORIDADE</th>
+            <th>DATA</th><th>HORA</th>
           </tr>
         </thead>
-        <tbody id="tbody">
-          <tr><td colspan="12" class="muted">Carregando...</td></tr>
-        </tbody>
+        <tbody></tbody>
       </table>
     </div>
   </div>
+</div>
 
-  <script>
-    const API = "/api/pro";
+<script>
+const $ = (id)=>document.getElementById(id);
+const pick = (o, keys, d=null)=>{ for(const k of keys){ if(o && o[k]!=null && o[k]!=="" ) return o[k]; } return d; };
+const num = (v)=>{ const n=Number(String(v).replace(",",".")); return Number.isFinite(n)?n:null; };
+const fmt = (v, dec=4)=> (v==null? "—" : Number(v).toFixed(dec));
+const fmt2 = (v)=> (v==null? "—" : Number(v).toFixed(2));
+const clsZona = (z)=>{
+  z=String(z||"").toUpperCase();
+  if(z.includes("VERDE")) return "zverde";
+  if(z.includes("AMARE")) return "zamarela";
+  if(z.includes("VERM")) return "zvermelha";
+  return "";
+};
+const sideHtml = (s)=>{
+  s=String(s||"").toUpperCase();
+  if(s==="LONG") return `<span class="long">LONG</span>`;
+  if(s==="SHORT") return `<span class="short">SHORT</span>`;
+  return s||"—";
+};
+const ganhoHtml = (g)=>{
+  const n=num(g);
+  if(n==null) return "—";
+  const c = n>=0 ? "pos":"neg";
+  return `<span class="${c}">${fmt2(n)}%</span>`;
+};
+const assertHtml = (a, n)=>{
+  const av=num(a); if(av==null) return "—";
+  const nn = num(n);
+  return nn==null ? `${fmt2(av)}%` : `${fmt2(av)}% (n=${Math.trunc(nn)})`;
+};
+const prazoHtml = (p)=>{
+  const n=num(p);
+  if(n==null) return "—";
+  // dias com 0 ou 1 casa dependendo
+  const d = n<10 ? n.toFixed(1) : Math.round(n).toString();
+  return `${d}d`;
+};
 
-    function fmtPrice(v){
-      const n = Number(v);
-      if (!isFinite(n)) return "-";
-      const a = Math.abs(n);
-      if (a >= 1) return n.toFixed(4);
-      let d = 5;
-      if (a >= 0.1) d = 5;
-      else if (a >= 0.01) d = 6;
-      else if (a >= 0.001) d = 7;
-      else if (a >= 0.0001) d = 8;
-      else if (a >= 0.00001) d = 9;
-      else d = 10;
-      let s = n.toFixed(d);
-      s = s.replace(/0+$/,'').replace(/\.$/,'');
-      return s;
-    }
+async function load(){
+  const r = await fetch("/api/pro", {cache:"no-store", credentials:"same-origin"});
+  const j = await r.json();
 
-    function clsSide(side){
-      const s = String(side||"").toUpperCase();
-      if (s.includes("LONG")) return "sideLong";
-      if (s.includes("SHORT")) return "sideShort";
-      return "sideNe";
-    }
+  const sinais = pick(j, ["sinais","items","data"], []);
+  const ua = pick(j, ["ultima_atualizacao","ts_brt","ts"], null);
 
-    function clsGain(g){
-      const n = Number(g);
-      return (isFinite(n) && n >= 3) ? "gainOk" : "gainBad";
-    }
+  $("upd").textContent = "Atualizado: " + (ua || new Date().toISOString().slice(0,16).replace("T"," "));
+  $("meta").textContent = `GAIN_MIN: ${pick(j,["regra_gain_min","gain_min"],"—")} • Volatilidade BTC: ${pick(j,["status_volatilidade","btc_vol"],"—")}`;
 
-    function clsAssert(a){
-      const n = Number(a);
-      return (isFinite(n) && n >= 65) ? "assertOk" : "assertBad";
-    }
+  const tb = $("tb").querySelector("tbody");
+  tb.innerHTML = "";
 
-    function clsZona(z){
-      const s = String(z||"").toUpperCase();
-      if (s.includes("VERDE")) return "zonaVerde";
-      if (s.includes("AMARE")) return "zonaAmarela";
-      if (s.includes("VERMEL")) return "zonaVermelha";
-      return "";
-    }
+  for(const s of sinais){
+    const par = pick(s,["par","PAR"]);
+    const side = pick(s,["side","SIDE"]);
+    const preco = pick(s,["preco","preço","price"]);
+    const alvo  = pick(s,["alvo","target"]);
+    const ganho = pick(s,["ganho_pct","ganho","gain_pct"]);
+    const asrt  = pick(s,["assert_pct","assert","assert_percent"]);
+    const an    = pick(s,["assert_n","n","samples"]);
+    const prazo = pick(s,["prazo_dias","prazo","eta_dias","eta_days"]);
+    const zona  = pick(s,["zona"]);
+    const risco = pick(s,["risco"]);
+    const prio  = pick(s,["prioridade"]);
+    const data  = pick(s,["data"]);
+    const hora  = pick(s,["hora"]);
 
-    function clsRisco(r){
-      const s = String(r||"").toUpperCase();
-      if (s.includes("BAIX")) return "riscoBaixo";
-      if (s.includes("MÉD") || s.includes("MED")) return "riscoMedio";
-      if (s.includes("ALTO")) return "riscoAlto";
-      return "";
-    }
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${par||"—"}</td>
+      <td>${sideHtml(side)}</td>
+      <td>${fmt(num(preco), 4)}</td>
+      <td>${fmt(num(alvo), 4)}</td>
+      <td>${ganhoHtml(ganho)}</td>
+      <td>${assertHtml(asrt, an)}</td>
+      <td>${prazoHtml(prazo)}</td>
+      <td class="${clsZona(zona)}">${(zona||"—")}</td>
+      <td>${(risco||"—")}</td>
+      <td>${(prio||"—")}</td>
+      <td>${(data||"—")}</td>
+      <td>${(hora||"—")}</td>
+    `;
+    tb.appendChild(tr);
+  }
+}
 
-    function clsPrio(p){
-      const s = String(p||"").toUpperCase();
-      if (s.includes("ALTA")) return "prioAlta";
-      if (s.includes("MÉD") || s.includes("MED")) return "prioMedia";
-      if (s.includes("BAIX")) return "prioBaixa";
-      return "";
-    }
-
-    async function load(){
-      const tbody = document.getElementById("tbody");
-      try{
-        const r = await fetch(API, { cache: "no-store" });
-        const data = await r.json();
-
-        document.getElementById("updated").textContent =
-          "Atualizado: " + (data.updated_brt || "--");
-
-        const lista = Array.isArray(data.lista) ? data.lista : [];
-        if (!lista.length){
-          tbody.innerHTML = `<tr><td colspan="12" class="muted">Sem dados.</td></tr>`;
-          return;
-        }
-
-        tbody.innerHTML = lista.map(x => {
-          const side = String(x.side||"NÃO ENTRAR");
-          const ganho = Number(x.ganho_pct||0);
-          const assertv = Number(x.assert_pct||0);
-
-          return `
-            <tr>
-              <td>${x.par||""}</td>
-              <td class="${clsSide(side)}">${side}</td>
-              <td>${fmtPrice(x.preco)}</td>
-              <td>${fmtPrice(x.alvo)}</td>
-              <td class="${clsGain(ganho)}">${isFinite(ganho)? ganho.toFixed(2):"0.00"}%</td>
-              <td class="${clsAssert(assertv)}">${isFinite(assertv)? assertv.toFixed(2):"0.00"}%</td>
-              <td>${x.eta||""}</td>
-              <td class="${clsZona(x.zona)}">${x.zona||""}</td>
-              <td class="${clsRisco(x.risco)}">${x.risco||""}</td>
-              <td class="${clsPrio(x.prioridade)}">${x.prioridade||""}</td>
-              <td>${x.data||""}</td>
-              <td>${x.hora||""}</td>
-            </tr>
-          `;
-        }).join("");
-      } catch (e) {
-        console.log("API /api/pro indisponível:", e);
-        // não polui a tela
-      }
-    }
-
-    load();
-    setInterval(load, 60_000);
-  </script>
+load();
+setInterval(load, 60000);
+</script>
 </body>
 </html>

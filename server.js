@@ -28,7 +28,8 @@ const DIST_DIR = path.join(__dirname, "dist");
 
 app.disable("x-powered-by");
 app.use(morgan("combined"));
-app.use(express.static(DIST_DIR, { maxAge: "60s", etag: true }));
+app.use(express.static(DIST_DIR, { maxAge: "0", etag: false }));
+
 
 function safeReadJson(filePath, fallback) {
   try {
@@ -40,8 +41,15 @@ function safeReadJson(filePath, fallback) {
 }
 
 app.get("/health", (req, res) => {
-  res.json({ ok: true, service: "autotrader-pro", ts: new Date().toISOString() });
+  res.setHeader("Cache-Control", "no-store");
+  res.json({
+    ok: true,
+    service: "autotrader-pro",
+    ts: new Date().toISOString(),
+    version: process.env.BUILD_VERSION || "manual"
+  });
 });
+
 
 app.get("/api/pro", (req, res) => {
   const p = path.join(DATA_DIR, "pro.json");
@@ -89,6 +97,23 @@ app.get("/api/top10", (req, res) => {
     sinais: top
   });
 });
+
+
+// --- AUDIT (JSON) ---
+app.get("/api/audit", (req, res) => {
+  const p = path.join(DATA_DIR, "audit.json");
+  const data = safeReadJson(p, {
+    status: "OK",
+    ts: new Date().toISOString(),
+    ts_brt: null,
+    pro_itens: 0,
+    top10_itens: 0,
+    details: "audit.json nao encontrado; retornando padrao",
+  });
+  res.setHeader("Cache-Control", "no-store");
+  res.json(data);
+});
+
 
 
 app.get("/top10", (req, res) => res.sendFile(path.join(DIST_DIR, "top10.html")));

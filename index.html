@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AUTOTRADER PRO</title>
+  <style>
+    :root{
+      --bg:#061b2b;
+      --card:#0b2a42;
+      --line:#174466;
+      --text:#ffffff;
+      --muted:#b9c7d6;
+      --accent:#ff8a00; /* abóbora */
+      --ok:#31c96b;
+      --bad:#ff4d4d;
+      --btn:#1f6aa5;
+      --btn2:#2b86c5;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}
+    .wrap{max-width:1200px;margin:0 auto;padding:16px}
+    .top{
+      display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;
+      padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,0.03);
+    }
+    .brand{font-weight:800;letter-spacing:.5px}
+    .sub{color:var(--muted);font-size:13px;margin-top:2px}
+    .right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .pill{padding:8px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:13px}
+    .tabs{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+    .tab{
+      cursor:pointer;user-select:none;
+      padding:10px 14px;border-radius:12px;border:1px solid var(--line);
+      background:var(--btn);color:#fff;font-weight:700;
+    }
+    .tab.active{background:var(--btn2);border-color:transparent}
+    .panel{display:none}
+    .panel.active{display:block}
+    .card{
+      border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,0.03);
+      padding:14px;
+    }
+    .title{color:var(--accent);font-weight:900;margin:0 0 8px 0;letter-spacing:.4px}
+    .note{color:var(--muted);font-size:13px;margin:0 0 10px 0}
+    .tableWrap{overflow:auto;border-radius:14px;border:1px solid var(--line)}
+    table{width:100%;border-collapse:collapse;min-width:900px;background:rgba(0,0,0,0.15)}
+    th,td{padding:10px 10px;border-bottom:1px solid rgba(23,68,102,.6);white-space:nowrap}
+    th{position:sticky;top:0;background:rgba(6,27,43,.95);color:var(--accent);font-weight:900}
+    tr:hover td{background:rgba(255,255,255,0.03)}
+    .sideLong{color:var(--ok);font-weight:900}
+    .sideShort{color:var(--bad);font-weight:900}
+    .pos{color:var(--ok);font-weight:900}
+    .neg{color:var(--bad);font-weight:900}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+    .small{font-size:12px;color:var(--muted)}
+    .btn{
+      cursor:pointer;border:0;border-radius:12px;padding:10px 12px;
+      background:var(--btn2);color:#fff;font-weight:900;
+    }
+    .grid2{display:grid;grid-template-columns:1fr;gap:14px}
+    @media (min-width: 920px){ .grid2{grid-template-columns:1fr 1fr;} }
+    pre{
+      margin:0;white-space:pre-wrap;word-break:break-word;
+      background:rgba(0,0,0,0.2);border:1px solid var(--line);border-radius:14px;
+      padding:12px;color:#e9f2ff
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <div class="brand">AUTOTRADER PRO</div>
+        <div class="sub">Futuro Perpétuo • Cruzado • Painel único</div>
+      </div>
+      <div class="right">
+        <div class="pill">Status: <span id="statusTxt">carregando...</span></div>
+        <div class="pill mono" id="clock">--:--</div>
+        <button class="btn" id="btnRefresh">ATUALIZAR</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="full">FULL</div>
+      <div class="tab" data-tab="top10">TOP10</div>
+      <div class="tab" data-tab="audit">AUDIT</div>
+    </div>
+
+    <div class="panel active" id="panel-full">
+      <div class="card">
+        <h2 class="title">FULL (PRO)</h2>
+        <p class="note">Dados: <span class="mono">/api/pro</span></p>
+        <div class="tableWrap">
+          <table id="tblPro">
+            <thead><tr id="proHead"></tr></thead>
+            <tbody id="proBody"></tbody>
+          </table>
+        </div>
+        <p class="small" id="proMeta"></p>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-top10">
+      <div class="card">
+        <h2 class="title">TOP10</h2>
+        <p class="note">Dados: <span class="mono">/api/top10</span></p>
+        <div class="tableWrap">
+          <table id="tblTop10">
+            <thead><tr id="t10Head"></tr></thead>
+            <tbody id="t10Body"></tbody>
+          </table>
+        </div>
+        <p class="small" id="t10Meta"></p>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-audit">
+      <div class="grid2">
+        <div class="card">
+          <h2 class="title">AUDITORIA</h2>
+          <p class="note">Dados: <span class="mono">/api/audit</span></p>
+          <pre id="auditBox">carregando...</pre>
+        </div>
+        <div class="card">
+          <h2 class="title">RESUMO</h2>
+          <pre id="auditResumo">carregando...</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const $ = (id)=>document.getElementById(id);
+
+  function setClock(){
+    const d = new Date();
+    const hh = String(d.getHours()).padStart(2,'0');
+    const mm = String(d.getMinutes()).padStart(2,'0');
+    $('clock').textContent = `${hh}:${mm}`;
+  }
+  setClock(); setInterval(setClock, 1000);
+
+  function sideClass(v){
+    const s = String(v||'').toUpperCase();
+    if (s.includes('LONG')) return 'sideLong';
+    if (s.includes('SHORT')) return 'sideShort';
+    return '';
+  }
+  function pctClass(v){
+    const n = Number(String(v).replace('%','').replace(',','.'));
+    if (isNaN(n)) return '';
+    return n >= 0 ? 'pos' : 'neg';
+  }
+
+  async function getJSON(url){
+    const r = await fetch(url + '?ts=' + Date.now(), {cache:'no-store'});
+    const ct = (r.headers.get('content-type')||'').toLowerCase();
+    if (!ct.includes('application/json')) {
+      const t = await r.text();
+      throw new Error('Resposta não é JSON: ' + t.slice(0,80));
+    }
+    return r.json();
+  }
+
+  function renderTable(headEl, bodyEl, rows){
+    bodyEl.innerHTML = '';
+    headEl.innerHTML = '';
+
+    if (!Array.isArray(rows) || rows.length === 0){
+      headEl.innerHTML = '<th>SEM DADOS</th>';
+      bodyEl.innerHTML = '<tr><td class="small">nenhum registro</td></tr>';
+      return;
+    }
+
+    // aceita array de objetos
+    const cols = Object.keys(rows[0]);
+    cols.forEach(c=>{
+      const th=document.createElement('th');
+      th.textContent = c.toUpperCase();
+      headEl.appendChild(th);
+    });
+
+    rows.forEach(obj=>{
+      const tr=document.createElement('tr');
+      cols.forEach(c=>{
+        const td=document.createElement('td');
+        const val = obj[c];
+
+        // estilos automáticos
+        if (String(c).toLowerCase().includes('side')) td.className = sideClass(val);
+        if (String(c).toLowerCase().includes('pnl') || String(c).toLowerCase().includes('%') || String(c).toLowerCase().includes('ganho')) td.className = (td.className + ' ' + pctClass(val)).trim();
+
+        td.textContent = (val === null || val === undefined) ? '' : String(val);
+        tr.appendChild(td);
+      });
+      bodyEl.appendChild(tr);
+    });
+  }
+
+  async function loadAll(){
+    try{
+      $('statusTxt').textContent = 'OK';
+      $('statusTxt').style.color = 'var(--ok)';
+
+      const [pro, top10, audit] = await Promise.all([
+        getJSON('/api/pro'),
+        getJSON('/api/top10'),
+        getJSON('/api/audit')
+      ]);
+
+      // PRO: tenta achar lista em pro.items / pro.rows / pro.data / pro
+      const proRows = pro.items || pro.rows || pro.data || pro;
+      renderTable($('proHead'), $('proBody'), proRows);
+      $('proMeta').textContent = `Atualizado: ${pro.ts_brt || pro.ts || ''}  • Itens: ${Array.isArray(proRows)?proRows.length:'?'}`;
+
+      // TOP10
+      const t10Rows = top10.items || top10.rows || top10.data || top10;
+      renderTable($('t10Head'), $('t10Body'), t10Rows);
+      $('t10Meta').textContent = `Atualizado: ${top10.ts_brt || top10.ts || ''}  • Itens: ${Array.isArray(t10Rows)?t10Rows.length:'?'}`;
+
+      // AUDIT
+      $('auditBox').textContent = audit.details || JSON.stringify(audit, null, 2);
+
+      const resumo = [
+        `status: ${audit.status || 'OK'}`,
+        `ts_brt: ${audit.ts_brt || ''}`,
+        `pro_itens: ${audit.pro_itens ?? ''}`,
+        `top10_itens: ${audit.top10_itens ?? ''}`
+      ].join('\n');
+      $('auditResumo').textContent = resumo;
+
+    }catch(e){
+      $('statusTxt').textContent = 'ERRO';
+      $('statusTxt').style.color = 'var(--bad)';
+      $('auditBox').textContent = String(e.message || e);
+      $('auditResumo').textContent = 'Falha ao carregar.\n' + String(e.message || e);
+    }
+  }
+
+  function setTab(tab){
+    document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active', x.dataset.tab===tab));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    $('panel-' + tab).classList.add('active');
+    history.replaceState(null, '', '#'+tab);
+  }
+
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.addEventListener('click', ()=>setTab(t.dataset.tab));
+  });
+  $('btnRefresh').addEventListener('click', loadAll);
+
+  const initial = (location.hash||'#full').replace('#','');
+  setTab(['full','top10','audit'].includes(initial) ? initial : 'full');
+
+  loadAll();
+  setInterval(loadAll, 30000); // atualiza a cada 30s
+</script>
+</body>
+</html>
