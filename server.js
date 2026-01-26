@@ -226,6 +226,21 @@ app.get("/api/audit", (req, res) => {
   if (!raw) return res.json({ ok:true, meta:{ updated_brt: formatBRTFromDate(new Date()).slice(0,16) }, items: [] });
   return res.json(raw);
 });
+const path = require("path");
+
+// HEALTH (pra auditoria e deploy)
+app.get("/health", (req, res) => {
+  res.json({ ok: true, service: "autotrader-pro" });
+});
+
+// SERVIR HTML DO /dist
+const DIST = path.join(__dirname, "dist");
+app.use(express.static(DIST, { index: false }));
+
+// URLs oficiais do painel
+app.get("/", (req, res) => res.sendFile(path.join(DIST, "full.html")));
+app.get("/full.html", (req, res) => res.sendFile(path.join(DIST, "full.html")));
+app.get("/top10.html", (req, res) => res.sendFile(path.join(DIST, "top10.html")));
 
 app.listen(PORT, () => {
   console.log(`[AUTOTRADER-PRO] API on :${PORT} | DATA_DIR=${DATA_DIR}`);
