@@ -2,6 +2,8 @@ name: Deploy VM
 
 on:
   workflow_dispatch:
+  push:
+    branches: ["main"]
 
 jobs:
   deploy:
@@ -10,40 +12,51 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Copia o projeto para a VM (código do server + html)
-      - name: Upload repo to VM
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          port: ${{ secrets.VM_PORT }}
-          source: "."
-          target: "/home/roteiro_ds/AUTOTRADER-PRO"
-          strip_components: 0
+      - name: Setup SSH
+        shell: bash
+        run: |
+          set -e
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/github_actions
+          chmod 600 ~/.ssh/github_actions
+          ssh-keyscan -H "${{ secrets.VM_HOST }}" >> ~/.ssh/known_hosts
 
-      # Reinicia API + publica HTML no diretório do site
-      - name: Restart services + publish HTML
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VM_HOST }}
-          username: ${{ secrets.VM_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
-          port: ${{ secrets.VM_PORT }}
-          script: |
-            set -e
-            cd /home/roteiro_ds/AUTOTRADER-PRO
+      - name: Deploy to VM (pull + install + restart)
+        shell: bash
+        run: |
+          set -e
+          ssh -i ~/.ssh/github_actions "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" <<'SSH'
+          set -e
+          cd /home/roteiro_ds/AUTOTRADER-PRO
+          git fetch --all
+          git reset --hard origin/main
+          npm ci --omit=dev
+          sudo systemctl restart autotrader-pro.service
+          SSH
 
-            # dependências (se tiver)
-            if [ -f package-lock.json ]; then
-              npm ci --omit=dev || npm ci || true
-            fi
+      - name: TESTE 1 - Service ativo
+        shell: bash
+        run: |
+          set -e
+          ssh -i ~/.ssh/github_actions "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+            "sudo systemctl is-active --quiet autotrader-pro.service && echo OK_SERVICE"
 
-            # reinicia a API
-            sudo systemctl restart autotrader-pro.service
+      - name: TESTE 2 - API /api/pro responde
+        shell: bash
+        run: |
+          set -e
+          ssh -i ~/.ssh/github_actions "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
+            "curl -fsS --max-time 8 http://127.0.0.1:8095/api/pro | head -c 200 && echo"
 
-            # publica HTML do painel
-            sudo mkdir -p /var/www/paineljorge
-            sudo cp -f ./full.html ./top10.html ./audit.html ./favicon.ico /var/www/paineljorge/ 2>/dev/null || true
-            sudo nginx -t
-            sudo systemctl reload nginx
+      - name: TESTE 3 - TOP10 e HEALTH existem (HTTP 200)
+        shell: bash
+        run: |
+          set -e
+          ssh -i ~/.ssh/github_actions "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" <<'SSH'
+          set -e
+          code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 8 http://127.0.0.1:8095/top10.html)
+          echo "TOP10_HTTP_CODE=$code"
+          test "$code" = "200"
+          curl -fsS --max-time 8 http://127.0.0.1:8095/health
+          echo
+          SSH
