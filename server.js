@@ -13,6 +13,23 @@ app.get("/health", (req, res) => {
 });
 
 const app = express();
+// === STATIC_SITE_V1 ===
+const path = require("path");
+
+// health (para monitorar se está vivo)
+app.get("/health", (req, res) => {
+  res.json({ ok: true, service: "autotrader-pro", ts: Date.now() });
+});
+
+// servir arquivos do /dist (top10.html, full.html, index.html etc)
+app.use(express.static(path.join(__dirname, "dist")));
+
+// compatibilidade (links diretos)
+app.get("/top10", (req, res) => res.sendFile(path.join(__dirname, "dist", "top10.html")));
+app.get("/top10.html", (req, res) => res.sendFile(path.join(__dirname, "dist", "top10.html")));
+app.get("/full", (req, res) => res.sendFile(path.join(__dirname, "dist", "full.html")));
+app.get("/full.html", (req, res) => res.sendFile(path.join(__dirname, "dist", "full.html")));
+// === /STATIC_SITE_V1 ===
 
 const PORT = Number(process.env.PORT || 8095);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
