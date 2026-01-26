@@ -1,40 +1,31 @@
-/**
- * AUTOTRADER-PRO - server.js (FIX DEFINITIVO V2)
- * - Corrige DATA/HORA (BRT) e PRAZO (quando existir em qualquer chave conhecida)
- * - /api/top10 pode ser derivado do PRO se top10.json estiver ausente/inválido
- */
 "use strict";
 
 const fs = require("fs");
 const path = require("path");
 const express = require("express");
-app.get("/health", (req, res) => {
-  res.json({ ok: true, service: "AUTOTRADER-PRO", ts: Date.now() });
-});
 
 const app = express();
-// === STATIC_SITE_V1 ===
-const path = require("path");
-
-// health (para monitorar se está vivo)
-app.get("/health", (req, res) => {
-  res.json({ ok: true, service: "autotrader-pro", ts: Date.now() });
-});
-
-// servir arquivos do /dist (top10.html, full.html, index.html etc)
-app.use(express.static(path.join(__dirname, "dist")));
-
-// compatibilidade (links diretos)
-app.get("/top10", (req, res) => res.sendFile(path.join(__dirname, "dist", "top10.html")));
-app.get("/top10.html", (req, res) => res.sendFile(path.join(__dirname, "dist", "top10.html")));
-app.get("/full", (req, res) => res.sendFile(path.join(__dirname, "dist", "full.html")));
-app.get("/full.html", (req, res) => res.sendFile(path.join(__dirname, "dist", "full.html")));
-// === /STATIC_SITE_V1 ===
 
 const PORT = Number(process.env.PORT || 8095);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const TZ = "America/Sao_Paulo";
 
+// HEALTH (sempre)
+app.get("/health", (req, res) => {
+  res.json({ ok: true, service: "autotrader-pro", ts: Date.now() });
+});
+
+// STATIC (/dist)
+const DIST = path.join(__dirname, "dist");
+app.use(express.static(DIST, { index: false }));
+
+// URLs oficiais do painel
+app.get("/", (req, res) => res.sendFile(path.join(DIST, "full.html")));
+app.get("/full.html", (req, res) => res.sendFile(path.join(DIST, "full.html")));
+app.get("/top10.html", (req, res) => res.sendFile(path.join(DIST, "top10.html")));
+app.get("/top10", (req, res) => res.sendFile(path.join(DIST, "top10.html")));
+
+// ---------- helpers ----------
 function readJsonSafe(filePath) {
   try {
     if (!fs.existsSync(filePath)) return null;
@@ -54,9 +45,9 @@ function formatBRTFromDate(d) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit"
+    second: "2-digit",
   }).formatToParts(d);
-  const get = (t) => (parts.find(p => p.type === t) || {}).value || "";
+  const get = (t) => (parts.find((p) => p.type === t) || {}).value || "";
   return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}:${get("second")}`;
 }
 
@@ -98,11 +89,11 @@ function pickFirst(obj, keys) {
 function normalizeRow(r) {
   const row = Object.assign({}, r || {});
 
-  // DATA/HORA
   const updatedRaw = pickFirst(row, [
     "updated_brt","updatedBrt","updated_brt_str","updated_at_brt",
-    "updated_at","updatedAt","ts_brt","timestamp_brt","time_brt"
+    "updated_at","updatedAt","ts_brt","timestamp_brt","time_brt",
   ]);
+
   let parsed = parseUpdatedBrt(updatedRaw);
 
   if (!parsed && typeof updatedRaw === "string") {
@@ -115,15 +106,6 @@ function normalizeRow(r) {
   }
 
   if (!parsed) {
-    const d = pickFirst(row, ["data","date","dt"]);
-    const h = pickFirst(row, ["hora","time","hm"]);
-    if (typeof d === "string" && typeof h === "string") {
-      parsed = { date: d.trim(), time: h.trim().slice(0,5) };
-      row.updated_brt = `${parsed.date} ${parsed.time}`;
-    }
-  }
-
-  if (!parsed) {
     const brt = formatBRTFromDate(new Date());
     parsed = parseUpdatedBrt(brt);
     row.updated_brt = brt.slice(0, 16);
@@ -132,7 +114,6 @@ function normalizeRow(r) {
   row.data = parsed.date;
   row.hora = parsed.time;
 
-  // PRAZO
   const prazoTxt = pickFirst(row, ["prazo_txt","prazoTxt","prazo","prazo_str","prazoStr"]);
   if (typeof prazoTxt === "string" && prazoTxt.trim() && prazoTxt.trim() !== "—" && prazoTxt.trim() !== "-") {
     row.prazo = prazoTxt.trim();
@@ -148,7 +129,6 @@ function normalizeRow(r) {
   }
   if (!row.prazo) row.prazo = "—";
 
-  // SIDE
   if (row.side) {
     const s = String(row.side).toUpperCase().trim();
     row.side = (s === "LONG" || s === "SHORT" || s === "NÃO ENTRAR" || s === "NAO ENTRAR") ? s.replace("NAO","NÃO") : s;
@@ -167,11 +147,11 @@ function normalizePayload(payload) {
 
   let max = null;
   for (const r of norm) {
-    const u = typeof r.updated_brt === "string" ? r.updated_brt.slice(0,16) : null;
+    const u = typeof r.updated_brt === "string" ? r.updated_brt.slice(0, 16) : null;
     if (!u) continue;
     if (!max || u > max) max = u;
   }
-  if (!max) max = formatBRTFromDate(new Date()).slice(0,16);
+  if (!max) max = formatBRTFromDate(new Date()).slice(0, 16);
 
   return { items: norm, meta: { updated_brt: max, count: norm.length } };
 }
@@ -184,6 +164,7 @@ function chooseFile(candidates) {
   return null;
 }
 
+// APIs
 app.get("/api/pro", (req, res) => {
   const fp = chooseFile(["pro.json","pro_latest.json","pro_data.json","pro_snapshot.json"]);
   const raw = fp ? readJsonSafe(fp) : null;
@@ -204,7 +185,7 @@ app.get("/api/top10", (req, res) => {
     const proRaw = proFp ? readJsonSafe(proFp) : null;
     const proOut = normalizePayload(proRaw);
 
-    const scored = proOut.items.slice().sort((a,b)=>{
+    const scored = proOut.items.slice().sort((a,b) => {
       const aa = coerceNumber(a.assert || a.assert_pct || a.assert_percent) ?? 0;
       const bb = coerceNumber(b.assert || b.assert_pct || b.assert_percent) ?? 0;
       if (bb !== aa) return bb - aa;
@@ -226,21 +207,6 @@ app.get("/api/audit", (req, res) => {
   if (!raw) return res.json({ ok:true, meta:{ updated_brt: formatBRTFromDate(new Date()).slice(0,16) }, items: [] });
   return res.json(raw);
 });
-const path = require("path");
-
-// HEALTH (pra auditoria e deploy)
-app.get("/health", (req, res) => {
-  res.json({ ok: true, service: "autotrader-pro" });
-});
-
-// SERVIR HTML DO /dist
-const DIST = path.join(__dirname, "dist");
-app.use(express.static(DIST, { index: false }));
-
-// URLs oficiais do painel
-app.get("/", (req, res) => res.sendFile(path.join(DIST, "full.html")));
-app.get("/full.html", (req, res) => res.sendFile(path.join(DIST, "full.html")));
-app.get("/top10.html", (req, res) => res.sendFile(path.join(DIST, "top10.html")));
 
 app.listen(PORT, () => {
   console.log(`[AUTOTRADER-PRO] API on :${PORT} | DATA_DIR=${DATA_DIR}`);
