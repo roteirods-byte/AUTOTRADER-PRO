@@ -8,6 +8,9 @@
 const fs = require("fs");
 const path = require("path");
 const express = require("express");
+app.get("/health", (req, res) => {
+  res.json({ ok: true, service: "AUTOTRADER-PRO", ts: Date.now() });
+});
 
 const app = express();
 
