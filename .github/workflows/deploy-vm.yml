@@ -3,7 +3,7 @@ name: Deploy VM
 on:
   workflow_dispatch:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
 
 jobs:
   deploy:
@@ -21,6 +21,13 @@ jobs:
           chmod 600 ~/.ssh/github_actions
           ssh-keyscan -H "${{ secrets.VM_HOST }}" >> ~/.ssh/known_hosts
 
+      # 0) Pré-check do repo (pega erro de syntax ANTES de subir)
+      - name: PRECHECK - node --check server.js
+        shell: bash
+        run: |
+          set -e
+          node --check server.js
+
       - name: Deploy to VM (pull + install + restart)
         shell: bash
         run: |
@@ -30,7 +37,12 @@ jobs:
           cd /home/roteiro_ds/AUTOTRADER-PRO
           git fetch --all
           git reset --hard origin/main
+
           npm ci --omit=dev
+
+          # valida nginx (não reinicia se estiver inválido)
+          sudo nginx -t
+
           sudo systemctl restart autotrader-pro.service
           SSH
 
@@ -41,22 +53,34 @@ jobs:
           ssh -i ~/.ssh/github_actions "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
             "sudo systemctl is-active --quiet autotrader-pro.service && echo OK_SERVICE"
 
-      - name: TESTE 2 - API /api/pro responde
-        shell: bash
-        run: |
-          set -e
-          ssh -i ~/.ssh/github_actions "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" \
-            "curl -fsS --max-time 8 http://127.0.0.1:8095/api/pro | head -c 200 && echo"
-
-      - name: TESTE 3 - TOP10 e HEALTH existem (HTTP 200)
+      - name: TESTE 2 - Node endpoints locais (health + top10.html + api/pro)
         shell: bash
         run: |
           set -e
           ssh -i ~/.ssh/github_actions "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" <<'SSH'
           set -e
+          curl -fsS --max-time 8 http://127.0.0.1:8095/health >/dev/null
+
           code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 8 http://127.0.0.1:8095/top10.html)
-          echo "TOP10_HTTP_CODE=$code"
+          echo "LOCAL_TOP10_HTTP_CODE=$code"
           test "$code" = "200"
-          curl -fsS --max-time 8 http://127.0.0.1:8095/health
-          echo
+
+          curl -fsS --max-time 8 http://127.0.0.1:8095/api/pro | head -c 200; echo
+          SSH
+
+      - name: TESTE 3 - NGINX sem duplicidade paineljorge + site responde (HTTPS)
+        shell: bash
+        run: |
+          set -e
+          ssh -i ~/.ssh/github_actions "${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}" <<'SSH'
+          set -e
+
+          cnt=$(sudo nginx -T 2>/dev/null | awk '/server_name paineljorge.duckdns.org;/{c++} END{print c+0}')
+          echo "NGINX_SERVER_NAME_PAINELJORGE_COUNT=$cnt"
+          test "$cnt" = "1"
+
+          # teste ponta-a-ponta (nginx -> node)
+          code=$(curl -k -sS -o /dev/null -w "%{http_code}" --max-time 10 https://paineljorge.duckdns.org/top10.html)
+          echo "PUBLIC_TOP10_HTTPS_HTTP_CODE=$code"
+          test "$code" = "200"
           SSH
